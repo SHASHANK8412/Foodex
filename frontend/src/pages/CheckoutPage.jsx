@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { clearCart } from "../redux/slices/cartSlice";
 import { createOrder, verifyOrderPayment } from "../redux/slices/orderSlice";
+import { fetchDeliveryEstimate } from "../redux/slices/analyticsSlice";
 import { openRazorpayCheckout } from "../services/payment";
 import { formatCurrency } from "../utils/format";
 
@@ -12,12 +13,31 @@ const CheckoutPage = () => {
   const { items } = useSelector((state) => state.cart);
   const { user } = useSelector((state) => state.auth);
   const { loading, error } = useSelector((state) => state.orders);
+  const { deliveryEstimate } = useSelector((state) => state.analytics);
 
   const [address, setAddress] = useState({ line1: "", city: "", state: "", postalCode: "" });
   const [paymentError, setPaymentError] = useState("");
 
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const total = subtotal + subtotal * 0.05 + (items.length ? 40 : 0);
+
+  useEffect(() => {
+    if (!items.length) {
+      return;
+    }
+
+    const restaurantId = items[0].restaurantId;
+    const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
+
+    dispatch(
+      fetchDeliveryEstimate({
+        restaurantId,
+        itemCount,
+        distanceKm: 4,
+        hourOfDay: new Date().getHours(),
+      })
+    );
+  }, [dispatch, items]);
 
   const handlePlaceOrder = async (event) => {
     event.preventDefault();
@@ -151,6 +171,11 @@ const CheckoutPage = () => {
         <h2 className="text-lg font-bold text-slate-900">Payable amount</h2>
         <p className="mt-4 text-3xl font-black text-slate-900">{formatCurrency(total)}</p>
         <p className="mt-1 text-xs text-slate-500">Includes tax and delivery fee.</p>
+        {deliveryEstimate?.estimatedMinutes && (
+          <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
+            Estimated delivery time: {deliveryEstimate.estimatedMinutes} mins
+          </p>
+        )}
       </aside>
     </div>
   );

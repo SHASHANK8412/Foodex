@@ -13,6 +13,8 @@ const {
 
 const router = express.Router();
 
+router.post("/razorpay/webhook", orderController.razorpayWebhook);
+
 router.use(protect);
 
 router.get("/", orderController.listOrders);

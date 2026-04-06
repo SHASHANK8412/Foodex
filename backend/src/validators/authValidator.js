@@ -12,7 +12,12 @@ const loginValidator = [
   body("password").notEmpty().withMessage("Password is required"),
 ];
 
+const googleLoginValidator = [
+  body("idToken").notEmpty().withMessage("Google idToken is required"),
+];
+
 module.exports = {
   registerValidator,
   loginValidator,
+  googleLoginValidator,
 };

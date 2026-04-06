@@ -54,6 +54,11 @@ export const openRazorpayCheckout = async ({
       },
     });
 
+    instance.on("payment.failed", (response) => {
+      const reason = response?.error?.description || response?.error?.reason || "Payment failed";
+      reject(new Error(reason));
+    });
+
     instance.open();
   });
 };

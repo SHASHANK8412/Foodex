@@ -1,11 +1,14 @@
 const { StatusCodes } = require("http-status-codes");
+const crypto = require("crypto");
 const Restaurant = require("../models/Restaurant");
 const MenuItem = require("../models/MenuItem");
 const Order = require("../models/Order");
 const { ORDER_STATUS, PAYMENT_STATUS } = require("../constants/order");
+const KAFKA_TOPICS = require("../constants/kafkaTopics");
 const ApiError = require("../utils/ApiError");
-const { createRazorpayOrder, verifySignature } = require("./paymentService");
+const { createRazorpayOrder, verifySignature, verifyWebhookSignature } = require("./paymentService");
 const { emitOrderUpdate } = require("../sockets/socketManager");
+const { publishEvent } = require("../kafka");
 
 const TAX_RATE = 0.05;
 const DELIVERY_FEE = 40;
@@ -72,6 +75,14 @@ const createOrder = async ({ userId, restaurantId, items, deliveryAddress }) => 
   const populated = await Order.findById(draftOrder._id).populate("restaurant", "name");
   emitOrderUpdate(populated, "Order placed and payment initiated");
 
+  await publishEvent(KAFKA_TOPICS.ORDER_CREATED, {
+    orderId: String(populated._id),
+    userId: String(userId),
+    restaurantId: String(restaurantId),
+    totalAmount,
+    paymentStatus: PAYMENT_STATUS.PENDING,
+  });
+
   return {
     order: populated,
     payment: {
@@ -118,6 +129,15 @@ const verifyOrderPayment = async ({ orderId, razorpayOrderId, razorpayPaymentId,
 
   const populated = await Order.findById(order._id).populate("restaurant", "name").populate("user", "name email");
   emitOrderUpdate(populated, "Payment successful");
+
+  await publishEvent(KAFKA_TOPICS.ORDER_PAID, {
+    orderId: String(populated._id),
+    userId: String(populated.user?._id || populated.user),
+    restaurantId: String(populated.restaurant?._id || populated.restaurant),
+    totalAmount: populated.totalAmount,
+    paymentStatus: PAYMENT_STATUS.PAID,
+  });
+
   return populated;
 };
 
@@ -211,6 +231,89 @@ const getOrderById = async (orderId, user) => {
   throw new ApiError(StatusCodes.FORBIDDEN, "Not authorized to view this order");
 };
 
+const processRazorpayWebhook = async ({ rawBody, signature }) => {
+  if (!signature) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Missing Razorpay signature header");
+  }
+
+  const isSignatureValid = verifyWebhookSignature({ rawBody, signature });
+  if (!isSignatureValid) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid Razorpay webhook signature");
+  }
+
+  const payload = JSON.parse(rawBody);
+  const event = payload.event;
+  const entity = payload.payload?.payment?.entity;
+
+  if (!entity?.order_id) {
+    return { processed: false, reason: "No payment order id in payload" };
+  }
+
+  const order = await Order.findOne({ razorpayOrderId: entity.order_id });
+  if (!order) {
+    return { processed: false, reason: "Order not found for webhook" };
+  }
+
+  if (event === "payment.captured" || event === "order.paid") {
+    const shouldUpdate =
+      order.paymentStatus !== PAYMENT_STATUS.PAID ||
+      order.razorpayPaymentId !== entity.id ||
+      !order.razorpaySignature;
+
+    if (shouldUpdate) {
+      order.paymentStatus = PAYMENT_STATUS.PAID;
+      order.status = ORDER_STATUS.CONFIRMED;
+      order.razorpayPaymentId = entity.id;
+      order.razorpaySignature = crypto
+        .createHash("sha256")
+        .update(`${entity.order_id}|${entity.id}`)
+        .digest("hex");
+      order.trackingEvents.push({
+        status: ORDER_STATUS.CONFIRMED,
+        note: "Payment confirmed via webhook",
+      });
+
+      await order.save();
+
+      const populated = await Order.findById(order._id)
+        .populate("restaurant", "name")
+        .populate("user", "name email")
+        .populate("deliveryPartner", "name phone");
+
+      emitOrderUpdate(populated, "Payment confirmed (webhook)");
+
+      await publishEvent(KAFKA_TOPICS.ORDER_PAID, {
+        orderId: String(populated._id),
+        userId: String(populated.user?._id || populated.user),
+        restaurantId: String(populated.restaurant?._id || populated.restaurant),
+        totalAmount: populated.totalAmount,
+        paymentStatus: PAYMENT_STATUS.PAID,
+      });
+    }
+
+    return { processed: true, event, orderId: String(order._id) };
+  }
+
+  if (event === "payment.failed") {
+    order.paymentStatus = PAYMENT_STATUS.FAILED;
+    order.trackingEvents.push({
+      status: order.status,
+      note: "Payment failed via webhook",
+    });
+    await order.save();
+
+    const populated = await Order.findById(order._id)
+      .populate("restaurant", "name")
+      .populate("user", "name email")
+      .populate("deliveryPartner", "name phone");
+
+    emitOrderUpdate(populated, "Payment failed");
+    return { processed: true, event, orderId: String(order._id) };
+  }
+
+  return { processed: false, reason: `Unhandled event ${event}` };
+};
+
 module.exports = {
   createOrder,
   verifyOrderPayment,
@@ -218,4 +321,5 @@ module.exports = {
   assignDeliveryPartner,
   getOrdersForUser,
   getOrderById,
+  processRazorpayWebhook,
 };

@@ -21,6 +21,11 @@ export const loginUser = createAsyncThunk("auth/loginUser", async (payload) => {
   return response.data.data;
 });
 
+export const loginWithGoogle = createAsyncThunk("auth/loginWithGoogle", async (payload) => {
+  const response = await api.post("/auth/google", payload);
+  return response.data.data;
+});
+
 export const fetchMe = createAsyncThunk("auth/fetchMe", async () => {
   const response = await api.get("/auth/me");
   return response.data.data;
@@ -71,6 +76,21 @@ const authSlice = createSlice({
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || "Failed to login";
+      })
+      .addCase(loginWithGoogle.pending, (state) => {
+        state.loading = true;
+        state.error = "";
+      })
+      .addCase(loginWithGoogle.fulfilled, (state, action) => {
+        state.loading = false;
+        state.token = action.payload.token;
+        state.user = action.payload.user;
+        localStorage.setItem("foodex_token", action.payload.token);
+        localStorage.setItem("foodex_user", JSON.stringify(action.payload.user));
+      })
+      .addCase(loginWithGoogle.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || "Google login failed";
       })
       .addCase(fetchMe.fulfilled, (state, action) => {
         state.user = action.payload;

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { clearAuthError, loginUser } from "../redux/slices/authSlice";
+import { clearAuthError, loginUser, loginWithGoogle } from "../redux/slices/authSlice";
+import GoogleLoginButton from "../components/GoogleLoginButton";
 
 const LoginPage = () => {
   const dispatch = useDispatch();
@@ -24,6 +25,10 @@ const LoginPage = () => {
   const handleSubmit = async (event) => {
     event.preventDefault();
     await dispatch(loginUser(form));
+  };
+
+  const handleGoogleLogin = async (idToken) => {
+    await dispatch(loginWithGoogle({ idToken }));
   };
 
   return (
@@ -59,6 +64,14 @@ const LoginPage = () => {
           {loading ? "Signing in..." : "Login"}
         </button>
       </form>
+
+      <div className="my-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+        <span className="h-px flex-1 bg-slate-200" />
+        Or
+        <span className="h-px flex-1 bg-slate-200" />
+      </div>
+
+      <GoogleLoginButton onCredential={handleGoogleLogin} disabled={loading} />
 
       <p className="mt-5 text-sm text-slate-600">
         New here?{" "}

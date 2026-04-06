@@ -1,6 +1,19 @@
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchRecommendations } from "../redux/slices/analyticsSlice";
 
 const HomePage = () => {
+  const dispatch = useDispatch();
+  const { user } = useSelector((state) => state.auth);
+  const { recommendations } = useSelector((state) => state.analytics);
+
+  useEffect(() => {
+    if (user) {
+      dispatch(fetchRecommendations());
+    }
+  }, [dispatch, user]);
+
   return (
     <div className="space-y-14">
       <section className="relative overflow-hidden rounded-[2rem] border border-orange-100 bg-white px-6 py-10 shadow-xl sm:px-10">
@@ -39,6 +52,27 @@ const HomePage = () => {
           </article>
         ))}
       </section>
+
+      {Boolean(user && recommendations.length) && (
+        <section className="space-y-4 rounded-3xl border border-orange-100 bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-black text-slate-900">Recommended for you</h2>
+            <span className="text-xs font-semibold uppercase tracking-wide text-rose-600">Spark-powered</span>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {recommendations.slice(0, 6).map((item) => (
+              <Link
+                key={item.restaurantId + String(item.rank)}
+                to={"/restaurants/" + item.restaurantId}
+                className="rounded-2xl border border-slate-200 p-4 transition hover:border-rose-300 hover:bg-rose-50"
+              >
+                <p className="text-sm font-bold text-slate-900">{item.restaurantName || "Recommended Restaurant"}</p>
+                <p className="mt-1 text-xs text-slate-500">Score: {item.score}</p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 };

@@ -8,7 +8,9 @@ const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    password: { type: String, required: true, minlength: 6, select: false },
+    password: { type: String, minlength: 6, select: false },
+    googleId: { type: String, index: true },
+    authProvider: { type: String, enum: ["local", "google"], default: "local" },
     phone: { type: String, trim: true },
     role: {
       type: String,
@@ -31,7 +33,15 @@ const userSchema = new mongoose.Schema(
 );
 
 userSchema.pre("save", async function hashPassword(next) {
+  if (!this.password && !this.googleId) {
+    return next(new Error("Either password or googleId is required"));
+  }
+
   if (!this.isModified("password")) {
+    return next();
+  }
+
+  if (!this.password) {
     return next();
   }
 

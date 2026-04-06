@@ -16,6 +16,18 @@ const verifyPayment = asyncHandler(async (req, res) => {
   res.status(StatusCodes.OK).json({ success: true, data: order });
 });
 
+const razorpayWebhook = asyncHandler(async (req, res) => {
+  const signature = req.headers["x-razorpay-signature"];
+  const rawBody = Buffer.isBuffer(req.body) ? req.body.toString("utf-8") : JSON.stringify(req.body);
+
+  const result = await orderService.processRazorpayWebhook({
+    rawBody,
+    signature,
+  });
+
+  res.status(StatusCodes.OK).json({ success: true, data: result });
+});
+
 const listOrders = asyncHandler(async (req, res) => {
   const orders = await orderService.getOrdersForUser(req.user);
   res.status(StatusCodes.OK).json({ success: true, data: orders });
@@ -51,6 +63,7 @@ const assignDeliveryPartner = asyncHandler(async (req, res) => {
 module.exports = {
   createOrder,
   verifyPayment,
+  razorpayWebhook,
   listOrders,
   getOrder,
   updateStatus,

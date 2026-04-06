@@ -11,6 +11,8 @@ Production-oriented Node.js + Express backend for food delivery with MongoDB, JW
 - Razorpay payment order creation and verification
 - Delivery partner creation and assignment
 - Real-time order updates and live delivery location events via Socket.io
+- Apache Kafka event-driven workflow for order processing and notifications
+- Apache Spark analytics integration for recommendations, demand prediction, and delivery ETA
 
 ## Folder Structure
 
@@ -53,6 +55,60 @@ npm run dev
 ## API Base URL
 
 `/api`
+
+## Kafka Event-Driven Flow
+
+When Kafka is enabled (`KAFKA_ENABLED=true`), order processing uses producers and consumers:
+
+1. API creates an order and publishes `foodex.order.created`
+2. Kafka consumer triggers notification handling for order creation
+3. Kafka consumer attempts delivery partner assignment and emits `foodex.delivery.assigned`
+4. Payment verification publishes `foodex.order.paid`
+5. Kafka consumer sends payment success notifications and retries delivery assignment if pending
+
+### Kafka Topics
+
+- `foodex.order.created`
+- `foodex.order.paid`
+- `foodex.delivery.assigned`
+- `foodex.notification.requested`
+
+### Kafka Environment Variables
+
+- `KAFKA_ENABLED=true|false`
+- `KAFKA_CLIENT_ID=foodex-backend`
+- `KAFKA_BROKERS=localhost:9092`
+- `KAFKA_GROUP_ID=foodex-order-processors`
+
+## Spark Analytics Integration
+
+Spark-generated features are served through analytics APIs and consumed by the MERN frontend.
+
+### Analytics Endpoints
+
+- `GET /api/analytics/recommendations` (auth required)
+- `GET /api/analytics/demand/:restaurantId`
+- `GET /api/analytics/delivery-estimate?distanceKm=4&itemCount=2&hourOfDay=18`
+
+### Analytics Environment Variable
+
+- `ANALYTICS_OUTPUT_DIR=./analytics/output`
+
+### Spark Pipeline
+
+Run the Spark feature job from `backend/analytics/`:
+
+```bash
+spark-submit analytics/spark_foodex_features.py --input analytics/sample/orders.json --output analytics/output --format json
+```
+
+Output files used by backend service:
+
+- `recommendations.json`
+- `demand_forecast.json`
+- `delivery_eta_model.json`
+
+If files are not present, backend falls back to MongoDB aggregate/heuristic calculations.
 
 ## Key Endpoints
 

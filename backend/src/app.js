@@ -18,6 +18,8 @@ app.use(
   })
 );
 
+app.use("/api/orders/razorpay/webhook", express.raw({ type: "application/json" }));
+
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());

@@ -45,8 +45,18 @@ const verifySignature = ({ orderId, paymentId, signature }) => {
   return expected === signature;
 };
 
+const verifyWebhookSignature = ({ rawBody, signature }) => {
+  if (!env.webhookSecret) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Razorpay webhook secret is not configured");
+  }
+
+  const expected = crypto.createHmac("sha256", env.webhookSecret).update(rawBody).digest("hex");
+  return expected === signature;
+};
+
 module.exports = {
   createRazorpayOrder,
   verifySignature,
+  verifyWebhookSignature,
   isRazorpayConfigured,
 };

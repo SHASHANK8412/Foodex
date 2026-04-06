@@ -13,6 +13,11 @@ const login = asyncHandler(async (req, res) => {
   res.status(StatusCodes.OK).json({ success: true, data: result });
 });
 
+const googleLogin = asyncHandler(async (req, res) => {
+  const result = await authService.loginWithGoogle(req.body);
+  res.status(StatusCodes.OK).json({ success: true, data: result });
+});
+
 const me = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user.userId).select("-password");
   res.status(StatusCodes.OK).json({ success: true, data: user });
@@ -21,5 +26,6 @@ const me = asyncHandler(async (req, res) => {
 module.exports = {
   register,
   login,
+  googleLogin,
   me,
 };
