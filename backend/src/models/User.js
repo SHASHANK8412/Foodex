@@ -32,21 +32,20 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-userSchema.pre("save", async function hashPassword(next) {
+userSchema.pre("save", async function hashPassword() {
   if (!this.password && !this.googleId) {
-    return next(new Error("Either password or googleId is required"));
+    throw new Error("Either password or googleId is required");
   }
 
   if (!this.isModified("password")) {
-    return next();
+    return;
   }
 
   if (!this.password) {
-    return next();
+    return;
   }
 
   this.password = await bcrypt.hash(this.password, 10);
-  next();
 });
 
 userSchema.methods.comparePassword = function comparePassword(password) {

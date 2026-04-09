@@ -11,6 +11,6 @@ const router = express.Router();
 router.use(protect, authorize(ROLES.ADMIN));
 
 router.get("/partners", deliveryController.listPartners);
-router.post("/partners", deliveryPartnerValidator, validate, deliveryController.createPartner);
+router.post("/partners", ...deliveryPartnerValidator, validate, deliveryController.createPartner);
 
 module.exports = router;

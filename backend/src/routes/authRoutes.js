@@ -6,9 +6,9 @@ const { registerValidator, loginValidator, googleLoginValidator } = require("../
 
 const router = express.Router();
 
-router.post("/register", registerValidator, validate, authController.register);
-router.post("/login", loginValidator, validate, authController.login);
-router.post("/google", googleLoginValidator, validate, authController.googleLogin);
+router.post("/register", ...registerValidator, validate, authController.register);
+router.post("/login", ...loginValidator, validate, authController.login);
+router.post("/google", ...googleLoginValidator, validate, authController.googleLogin);
 router.get("/me", protect, authController.me);
 
 module.exports = router;

@@ -12,12 +12,12 @@ const OrderStatusTimeline = ({ status = "pending" }) => {
             <span
               className={
                 "inline-flex h-8 w-8 items-center justify-center rounded-full text-xs font-black " +
-                (active ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-500")
+                (active ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-300")
               }
             >
               {index + 1}
             </span>
-            <span className={"text-xs font-semibold uppercase tracking-wide " + (active ? "text-emerald-700" : "text-slate-500")}>
+            <span className={"text-xs font-semibold uppercase tracking-wide " + (active ? "text-emerald-700 dark:text-emerald-300" : "text-slate-500 dark:text-slate-400")}>
               {ORDER_STATUS_LABELS[step]}
             </span>
           </li>

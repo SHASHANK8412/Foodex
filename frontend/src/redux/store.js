@@ -5,6 +5,9 @@ import restaurantReducer from "./slices/restaurantSlice";
 import orderReducer from "./slices/orderSlice";
 import adminReducer from "./slices/adminSlice";
 import analyticsReducer from "./slices/analyticsSlice";
+import themeReducer from "./slices/themeSlice";
+import uiReducer from "./slices/uiSlice";
+import wishlistReducer from "./slices/wishlistSlice";
 
 const store = configureStore({
   reducer: {
@@ -14,6 +17,9 @@ const store = configureStore({
     orders: orderReducer,
     admin: adminReducer,
     analytics: analyticsReducer,
+    theme: themeReducer,
+    ui: uiReducer,
+    wishlist: wishlistReducer,
   },
 });
 

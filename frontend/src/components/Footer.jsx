@@ -6,7 +6,7 @@ const Footer = () => {
           <p className="font-bold text-slate-800">Foodex</p>
           <p>Fast delivery with live tracking and secure checkout.</p>
         </div>
-        <p>Built with React, Redux Toolkit, Router and Tailwind CSS.</p>
+        <p>Ordering made smarter with real-time tracking and predictions.</p>
       </div>
     </footer>
   );
