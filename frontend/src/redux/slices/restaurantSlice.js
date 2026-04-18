@@ -4,6 +4,7 @@ import api from "../../services/api";
 const initialState = {
   restaurants: [],
   selectedRestaurant: null,
+  demandByRestaurant: {},
   loading: false,
   error: "",
 };
@@ -21,7 +22,36 @@ export const fetchRestaurantById = createAsyncThunk("restaurants/fetchRestaurant
 const restaurantSlice = createSlice({
   name: "restaurants",
   initialState,
-  reducers: {},
+  reducers: {
+    applyDemandUpdate(state, action) {
+      const update = action.payload;
+      if (!update?.restaurantId) {
+        return;
+      }
+
+      state.demandByRestaurant[update.restaurantId] = update;
+
+      state.restaurants = state.restaurants.map((restaurant) =>
+        restaurant._id === update.restaurantId
+          ? {
+              ...restaurant,
+              demandLevel: update.demandLevel,
+              activeOrders: update.activeOrders,
+              estimatedWaitMinutes: update.estimatedWaitMinutes,
+            }
+          : restaurant
+      );
+
+      if (state.selectedRestaurant?.restaurant?._id === update.restaurantId) {
+        state.selectedRestaurant.restaurant = {
+          ...state.selectedRestaurant.restaurant,
+          demandLevel: update.demandLevel,
+          activeOrders: update.activeOrders,
+          estimatedWaitMinutes: update.estimatedWaitMinutes,
+        };
+      }
+    },
+  },
   extraReducers: (builder) => {
     builder
       .addCase(fetchRestaurants.pending, (state) => {
@@ -50,5 +80,7 @@ const restaurantSlice = createSlice({
       });
   },
 });
+
+export const { applyDemandUpdate } = restaurantSlice.actions;
 
 export default restaurantSlice.reducer;

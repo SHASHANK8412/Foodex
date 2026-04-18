@@ -1,15 +1,31 @@
 const { Server } = require("socket.io");
+const { createAdapter } = require("@socket.io/redis-adapter");
 const jwt = require("jsonwebtoken");
 const env = require("../config/env");
+const redisClient = require("../config/redis");
 const { setIO } = require("./socketManager");
+const Order = require("../models/Order");
+
+const socketAllowedOrigins = env.clientOrigins;
 
 const initializeSocket = (httpServer) => {
   const io = new Server(httpServer, {
     cors: {
-      origin: env.clientUrl,
+      origin: socketAllowedOrigins,
       credentials: true,
     },
   });
+
+  // Redis adapter for multi-instance scaling (optional in local/dev)
+  if (env.redisEnabled) {
+    const pubClient = redisClient;
+    const subClient = pubClient.duplicate();
+    pubClient.on("error", () => undefined);
+    subClient.on("error", () => undefined);
+    io.adapter(createAdapter(pubClient, subClient));
+  }
+
+  setIO(io);
 
   io.use((socket, next) => {
     try {
@@ -30,9 +46,30 @@ const initializeSocket = (httpServer) => {
     socket.join(`user:${socket.user.userId}`);
     socket.join(`role:${socket.user.role}`);
 
-    socket.on("order:join", ({ orderId }) => {
+    socket.on("order:join", async ({ orderId }) => {
       if (orderId) {
         socket.join(`order:${orderId}`);
+
+        try {
+          const order = await Order.findById(orderId)
+            .populate("restaurant", "name address.location")
+            .populate("user", "name email")
+            .populate("deliveryPartner", "name phone");
+
+          if (!order) {
+            return;
+          }
+
+          const isAdmin = socket.user.role === "admin";
+          const isOwner = String(order.user?._id || order.user) === String(socket.user.userId);
+          const isDelivery = String(order.deliveryPartner?._id || order.deliveryPartner) === String(socket.user.userId);
+
+          if (isAdmin || isOwner || isDelivery) {
+            socket.emit("order:snapshot", { order });
+          }
+        } catch (_error) {
+          // Ignore socket snapshot errors to keep connection alive.
+        }
       }
     });
 
@@ -42,7 +79,42 @@ const initializeSocket = (httpServer) => {
       }
     });
 
+    socket.on("restaurant:subscribe", ({ restaurantId }) => {
+      if (restaurantId) {
+        socket.join(`restaurant:${restaurantId}`);
+      }
+    });
+
+    socket.on("restaurant:unsubscribe", ({ restaurantId }) => {
+      if (restaurantId) {
+        socket.leave(`restaurant:${restaurantId}`);
+      }
+    });
+
+    socket.on("owner:restaurant:join", ({ restaurantId }) => {
+      if (restaurantId) {
+        socket.join(`owner:restaurant:${restaurantId}`);
+      }
+    });
+
+    socket.on("owner:restaurant:leave", ({ restaurantId }) => {
+      if (restaurantId) {
+        socket.leave(`owner:restaurant:${restaurantId}`);
+      }
+    });
+
     socket.on("delivery:location", ({ orderId, location }) => {
+      if (orderId && location) {
+        io.to(`order:${orderId}`).emit("delivery:location", {
+          orderId,
+          location,
+          deliveryPartnerId: socket.user.userId,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    });
+
+    socket.on("order:location:update", ({ orderId, location }) => {
       if (orderId && location) {
         io.to(`order:${orderId}`).emit("delivery:location", {
           orderId,

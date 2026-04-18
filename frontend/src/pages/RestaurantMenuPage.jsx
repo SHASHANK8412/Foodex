@@ -4,16 +4,21 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchRestaurantById } from "../redux/slices/restaurantSlice";
 import { fetchDemandForecast } from "../redux/slices/analyticsSlice";
 import MenuItemCard from "../components/MenuItemCard";
+import SemanticSearchPanel from "../components/SemanticSearchPanel";
+import RecommendationCarousel from "../components/RecommendationCarousel";
+import { fetchAiRecommendations } from "../redux/slices/aiSlice";
 
 const RestaurantMenuPage = () => {
   const { restaurantId } = useParams();
   const dispatch = useDispatch();
   const { selectedRestaurant, loading, error } = useSelector((state) => state.restaurants);
   const { demandForecast } = useSelector((state) => state.analytics);
+  const aiRecommendations = useSelector((state) => state.ai.recommendations);
 
   useEffect(() => {
     dispatch(fetchRestaurantById(restaurantId));
     dispatch(fetchDemandForecast(restaurantId));
+    dispatch(fetchAiRecommendations(restaurantId));
   }, [dispatch, restaurantId]);
 
   if (loading) {
@@ -68,6 +73,10 @@ const RestaurantMenuPage = () => {
           </div>
         </section>
       )}
+
+      <SemanticSearchPanel restaurantId={restaurantId} />
+
+      <RecommendationCarousel title="You may also like" items={aiRecommendations.mayLike} />
 
       <div className="space-y-3">
         {menu?.length ? (

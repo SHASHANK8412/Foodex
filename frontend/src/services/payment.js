@@ -37,6 +37,7 @@ export const openRazorpayCheckout = async ({
       order_id: orderId,
       name: "Foodex",
       description: "Food order payment",
+      image: "https://razorpay.com/assets/razorpay-logo.svg",
       prefill: {
         name: customer?.name || "",
         email: customer?.email || "",

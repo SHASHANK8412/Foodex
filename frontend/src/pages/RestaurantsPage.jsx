@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import RestaurantCard from "../components/RestaurantCard";
-import { fetchRestaurants } from "../redux/slices/restaurantSlice";
 import RestaurantCardSkeleton from "../components/RestaurantCardSkeleton";
+import { connectSocket, getSocket } from "../services/socket";
+import { fetchRestaurants } from "../redux/slices/restaurantSlice";
 
 const RestaurantsPage = () => {
   const dispatch = useDispatch();
-  const { restaurants, loading, error } = useSelector((state) => state.restaurants);
+  const { token } = useSelector((state) => state.auth);
   const globalQuery = useSelector((state) => state.ui.searchQuery);
+  const { restaurants: restaurantState, loading, error } = useSelector((state) => state.restaurants);
+  const [restaurantList, setRestaurantList] = useState([]);
   const [query, setQuery] = useState("");
   const [ratingFilter, setRatingFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -18,12 +21,56 @@ const RestaurantsPage = () => {
   }, [dispatch]);
 
   useEffect(() => {
+    setRestaurantList(restaurantState || []);
+  }, [restaurantState]);
+
+  useEffect(() => {
+    if (!token || !restaurantList.length) {
+      return undefined;
+    }
+
+    const socket = connectSocket(token);
+    if (!socket) {
+      return undefined;
+    }
+
+    restaurantList.forEach((restaurant) => {
+      socket.emit("restaurant:subscribe", { restaurantId: restaurant._id });
+    });
+
+    const onDemandUpdate = (payload) => {
+      setRestaurantList((prev) =>
+        prev.map((restaurant) =>
+          restaurant._id === payload.restaurantId
+            ? {
+                ...restaurant,
+                demandLevel: payload.demandLevel,
+                activeOrders: payload.activeOrders,
+                estimatedWaitMinutes: payload.estimatedWaitMinutes,
+              }
+            : restaurant
+        )
+      );
+    };
+
+    socket.on("demand:update", onDemandUpdate);
+
+    return () => {
+      const activeSocket = getSocket();
+      restaurantList.forEach((restaurant) => {
+        activeSocket?.emit("restaurant:unsubscribe", { restaurantId: restaurant._id });
+      });
+      activeSocket?.off("demand:update", onDemandUpdate);
+    };
+  }, [token, restaurantList]);
+
+  useEffect(() => {
     setQuery(globalQuery || "");
   }, [globalQuery]);
 
   const filtered = useMemo(() => {
     const value = query.trim().toLowerCase();
-    const filteredItems = restaurants.filter((item) => {
+    const filteredItems = restaurantList.filter((item) => {
       const inName = item.name?.toLowerCase().includes(value);
       const inCuisine = item.cuisine?.join(" ").toLowerCase().includes(value);
       const inCity = item.address?.city?.toLowerCase().includes(value);
@@ -47,13 +94,13 @@ const RestaurantsPage = () => {
     }
 
     return filteredItems;
-  }, [restaurants, query, ratingFilter, categoryFilter, sortBy]);
+  }, [restaurantList, query, ratingFilter, categoryFilter, sortBy]);
 
   const cuisineOptions = useMemo(() => {
     const set = new Set();
-    restaurants.forEach((item) => item.cuisine?.forEach((cuisine) => set.add(cuisine)));
+    restaurantList.forEach((item) => item.cuisine?.forEach((cuisine) => set.add(cuisine)));
     return ["all", ...Array.from(set)];
-  }, [restaurants]);
+  }, [restaurantList]);
 
   return (
     <div className="space-y-6">

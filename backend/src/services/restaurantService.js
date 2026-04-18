@@ -4,7 +4,11 @@ const MenuItem = require("../models/MenuItem");
 const ApiError = require("../utils/ApiError");
 
 const createRestaurant = async (payload, userId) => {
-  return Restaurant.create({ ...payload, createdBy: userId });
+  return Restaurant.create({
+    ...payload,
+    createdBy: userId,
+    ownerId: payload.ownerId || userId,
+  });
 };
 
 const listRestaurants = async () => {

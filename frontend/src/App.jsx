@@ -10,6 +10,10 @@ import OrderTrackingPage from "./pages/OrderTrackingPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
+import AdminAnalyticsPage from "./pages/AdminAnalyticsPage";
+import DeliveryDashboardPage from "./pages/DeliveryDashboardPage";
+import RestaurantDashboardPage from "./pages/RestaurantDashboardPage";
+import MenuDashboardPage from "./pages/MenuDashboardPage";
 import NotFoundPage from "./pages/NotFoundPage";
 
 const App = () => {
@@ -43,6 +47,38 @@ const App = () => {
           element={
             <ProtectedRoute roles={["admin"]}>
               <AdminDashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="admin/analytics"
+          element={
+            <ProtectedRoute roles={["admin"]}>
+              <AdminAnalyticsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="restaurant-dashboard"
+          element={
+            <ProtectedRoute roles={["owner", "admin"]}>
+              <RestaurantDashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="restaurant/:restaurantId/menu"
+          element={
+            <ProtectedRoute roles={["owner", "admin"]}>
+              <MenuDashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="delivery"
+          element={
+            <ProtectedRoute roles={["delivery"]}>
+              <DeliveryDashboardPage />
             </ProtectedRoute>
           }
         />

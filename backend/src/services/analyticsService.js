@@ -25,6 +25,13 @@ const toSafeNumber = (value, fallback = 0) => {
   return Number.isFinite(number) ? number : fallback;
 };
 
+const track = async (event, data) => {
+  // In a real application, this would send data to a dedicated analytics service
+  // like Segment, Mixpanel, or a data warehouse. For this example, we'll just log it.
+  console.log(`[ANALYTICS EVENT] ${event}:`, JSON.stringify(data, null, 2));
+  return Promise.resolve();
+};
+
 const getRecommendations = async (userId) => {
   const recommendationFile = path.join(outputDir, "recommendations.json");
   const records = readJsonArray(recommendationFile);
@@ -150,5 +157,6 @@ const estimateDeliveryTime = ({ distanceKm, itemCount, hourOfDay }) => {
 module.exports = {
   getRecommendations,
   getDemandPrediction,
+  track,
   estimateDeliveryTime,
 };

@@ -14,3 +14,10 @@ export const ORDER_TIMELINE = [
   "out_for_delivery",
   "delivered",
 ];
+
+export const ROLES = {
+  USER: "user",
+  ADMIN: "admin",
+  DELIVERY_PARTNER: "delivery",
+  OWNER: "owner",
+};

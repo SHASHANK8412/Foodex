@@ -34,11 +34,26 @@ const orderSlice = createSlice({
   initialState,
   reducers: {
     setActiveOrderFromSocket(state, action) {
-      const order = action.payload;
-      state.activeOrder = order;
-      const index = state.orders.findIndex((item) => item._id === order._id);
+      const incomingOrder = action.payload;
+      const currentActiveOrder = state.activeOrder;
+
+      const mergedOrder =
+        incomingOrder?.deliveryAddress?.location || !currentActiveOrder
+          ? incomingOrder
+          : {
+              ...incomingOrder,
+              deliveryAddress: {
+                ...(currentActiveOrder.deliveryAddress || {}),
+                ...(incomingOrder.deliveryAddress || {}),
+                location:
+                  incomingOrder.deliveryAddress?.location || currentActiveOrder.deliveryAddress?.location,
+              },
+            };
+
+      state.activeOrder = mergedOrder;
+      const index = state.orders.findIndex((item) => item._id === incomingOrder._id);
       if (index >= 0) {
-        state.orders[index] = order;
+        state.orders[index] = mergedOrder;
       }
     },
     clearOrderState(state) {

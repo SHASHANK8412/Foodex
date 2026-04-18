@@ -3,15 +3,23 @@ import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchRecommendations } from "../redux/slices/analyticsSlice";
 import OfferBanners from "../components/OfferBanners";
+import { fetchAiRecommendations, fetchQuickReorder } from "../redux/slices/aiSlice";
+import RecommendationCarousel from "../components/RecommendationCarousel";
+import QuickReorderCard from "../components/QuickReorderCard";
+import SemanticSearchPanel from "../components/SemanticSearchPanel";
 
 const HomePage = () => {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
   const { recommendations } = useSelector((state) => state.analytics);
+  const aiRecommendations = useSelector((state) => state.ai.recommendations);
+  const quickReorder = useSelector((state) => state.ai.quickReorder);
 
   useEffect(() => {
     if (user) {
       dispatch(fetchRecommendations());
+      dispatch(fetchAiRecommendations());
+      dispatch(fetchQuickReorder());
     }
   }, [dispatch, user]);
 
@@ -42,6 +50,13 @@ const HomePage = () => {
       </section>
 
       <OfferBanners />
+
+      <SemanticSearchPanel />
+
+      {user && <QuickReorderCard items={quickReorder} />}
+
+      <RecommendationCarousel title="You may also like" items={aiRecommendations.mayLike} />
+      <RecommendationCarousel title="Trending near you" items={aiRecommendations.trending} />
 
       <section className="grid gap-4 md:grid-cols-3">
         {[

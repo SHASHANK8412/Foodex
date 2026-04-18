@@ -1,8 +1,15 @@
 const mongoose = require("mongoose");
+const crypto = require("crypto");
 const { ORDER_STATUS, PAYMENT_STATUS } = require("../constants/order");
 
 const orderSchema = new mongoose.Schema(
   {
+    shortId: {
+      type: String,
+      unique: true,
+      index: true,
+      default: () => crypto.randomBytes(4).toString("hex").toUpperCase(),
+    },
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
     restaurant: {
       type: mongoose.Schema.Types.ObjectId,

@@ -8,6 +8,15 @@ const { deliveryPartnerValidator } = require("../validators/deliveryValidator");
 
 const router = express.Router();
 
+// Delivery partner-specific routes
+router.put(
+  "/availability",
+  protect,
+  authorize(ROLES.DELIVERY_PARTNER),
+  deliveryController.updateAvailability
+);
+
+// Admin routes for managing delivery partners
 router.use(protect, authorize(ROLES.ADMIN));
 
 router.get("/partners", deliveryController.listPartners);

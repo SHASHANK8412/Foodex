@@ -52,6 +52,20 @@ cp .env.example .env
 npm run dev
 ```
 
+4. Seed demo users, restaurants, and menu:
+
+```bash
+npm run seed:demo
+```
+
+Demo credentials:
+
+- admin@foodex.com / admin123
+- owner.indian@foodex.com / owner123
+- owner.chinese@foodex.com / owner123
+- owner.italian@foodex.com / owner123
+- user@foodex.com / user123
+
 ## API Base URL
 
 `/api`
@@ -94,6 +108,11 @@ Spark-generated features are served through analytics APIs and consumed by the M
 
 - `ANALYTICS_OUTPUT_DIR=./analytics/output`
 
+### Gemini AI Environment Variables
+
+- `GOOGLE_GEMINI_API_KEY=...`
+- `GOOGLE_GEMINI_MODEL=gemini-2.0-flash`
+
 ### Spark Pipeline
 
 Run the Spark feature job from `backend/analytics/`:
@@ -118,8 +137,12 @@ If files are not present, backend falls back to MongoDB aggregate/heuristic calc
 - `GET /api/restaurants`
 - `POST /api/restaurants` (admin)
 - `POST /api/restaurants/:restaurantId/menu` (admin)
+- `POST /api/ai/chat` (Gemini-backed natural-language order assistant)
+- `POST /api/ai/semantic-search`
+- `GET /api/ai/recommendations`
 - `POST /api/orders` (user)
 - `POST /api/orders/verify-payment` (user)
+- `GET /api/orders/:orderId/payment-status` (user/admin/delivery with access)
 - `PATCH /api/orders/:orderId/status` (admin/delivery)
 - `PATCH /api/orders/:orderId/assign-delivery` (admin)
 - `GET /api/delivery/partners` (admin)

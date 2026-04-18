@@ -5,6 +5,8 @@ import Navbar from "./Navbar";
 import Footer from "./Footer";
 import { fetchMe } from "../redux/slices/authSlice";
 import ToastContainer from "./ToastContainer";
+import FloatingAIChatWidget from "./FloatingAIChatWidget";
+import InstallPrompt from "./InstallPrompt";
 
 const Layout = () => {
   const dispatch = useDispatch();
@@ -30,6 +32,8 @@ const Layout = () => {
         </main>
         <Footer />
         <ToastContainer />
+        <FloatingAIChatWidget />
+        <InstallPrompt />
       </div>
     </div>
   );

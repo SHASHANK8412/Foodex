@@ -3,6 +3,9 @@ import { useEffect, useRef } from "react";
 const GoogleLoginButton = ({ onCredential, disabled }) => {
   const containerRef = useRef(null);
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  const currentOrigin = typeof window !== "undefined" ? window.location.origin : "";
+  const expectedOrigin = "http://localhost:5173";
+  const isOriginMismatch = currentOrigin && currentOrigin !== expectedOrigin;
 
   useEffect(() => {
     if (!clientId || !containerRef.current) {
@@ -62,6 +65,19 @@ const GoogleLoginButton = ({ onCredential, disabled }) => {
   return (
     <div className={disabled ? "pointer-events-none opacity-70" : ""}>
       <div ref={containerRef} className="flex justify-center" />
+      
+      {isOriginMismatch && (
+        <div className="mt-2 rounded-xl bg-red-50 p-3 text-center text-xs font-semibold text-red-700">
+          <p className="font-bold">Warning: Origin Mismatch Detected!</p>
+          <p>The app is running on <span className="font-mono">{currentOrigin}</span> but Google OAuth is configured for <span className="font-mono">{expectedOrigin}</span>.</p>
+          <p>This will cause a "400: origin_mismatch" error. Please ensure the app runs on port 5173.</p>
+        </div>
+      )}
+
+      <p className="mt-2 text-center text-xs text-slate-500">
+        If Google shows <span className="font-semibold">Error 400: origin_mismatch</span>, add this origin in
+        Google Cloud OAuth settings: <span className="font-semibold">{currentOrigin}</span>
+      </p>
     </div>
   );
 };

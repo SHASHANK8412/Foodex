@@ -4,6 +4,7 @@ const User = require("../models/User");
 const ApiError = require("../utils/ApiError");
 const ROLES = require("../constants/roles");
 const env = require("../config/env");
+const { emailQueue } = require("../queues");
 
 const googleClient = new OAuth2Client();
 
@@ -18,6 +19,14 @@ const registerUser = async (payload) => {
     role: ROLES.USER,
   });
   const token = user.generateAuthToken();
+
+  // Enqueue welcome email
+  emailQueue.add({
+    to: user.email,
+    subject: "Welcome to Foodex!",
+    text: `Hi ${user.name},\n\nWelcome to Foodex! We're excited to have you on board.`,
+    html: `<p>Hi ${user.name},</p><p>Welcome to Foodex! We're excited to have you on board.</p>`,
+  });
 
   return {
     token,
