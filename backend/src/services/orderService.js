@@ -9,6 +9,17 @@ const ApiError = require("../utils/ApiError");
 const { createRazorpayOrder, verifySignature, verifyWebhookSignature } = require("./paymentService");
 const { emitOrderUpdate } = require("../sockets/socketManager");
 const { publishEvent } = require("../kafka");
+const { pushUserNotification } = require("./notificationService");
+
+const assertDeliveryPartnerAssigned = (order, deliveryPartnerId) => {
+  if (!order.deliveryPartner) {
+    throw new ApiError(StatusCodes.FORBIDDEN, "Not authorized to update this order");
+  }
+
+  if (String(order.deliveryPartner) !== String(deliveryPartnerId)) {
+    throw new ApiError(StatusCodes.FORBIDDEN, "Not authorized to update this order");
+  }
+};
 
 const TAX_RATE = 0.05;
 const DELIVERY_FEE = 40;
@@ -141,10 +152,14 @@ const verifyOrderPayment = async ({ orderId, razorpayOrderId, razorpayPaymentId,
   return populated;
 };
 
-const updateOrderStatus = async ({ orderId, status, actorId, note, location }) => {
+const updateOrderStatus = async ({ orderId, status, actorId, actorRole, note, location }) => {
   const order = await Order.findById(orderId);
   if (!order) {
     throw new ApiError(StatusCodes.NOT_FOUND, "Order not found");
+  }
+
+  if (actorRole === "delivery") {
+    assertDeliveryPartnerAssigned(order, actorId);
   }
 
   order.status = status;
@@ -191,6 +206,16 @@ const assignDeliveryPartner = async ({ orderId, deliveryPartnerId, actorId }) =>
     .populate("deliveryPartner", "name phone");
 
   emitOrderUpdate(populated, "Delivery partner assigned");
+
+  await pushUserNotification({
+    userId: populated.deliveryPartner?._id || populated.deliveryPartner,
+    type: "info",
+    title: "New delivery assigned",
+    message: `Order ${String(populated._id).slice(-8)} is assigned to you.`,
+    meta: {
+      orderId: String(populated._id),
+    },
+  });
   return populated;
 };
 
@@ -203,6 +228,13 @@ const getOrdersForUser = async (user) => {
 
   if (user.role === "delivery") {
     query.deliveryPartner = user.userId;
+  }
+
+  if (user.role === "restaurant") {
+    const restaurants = await Restaurant.find({ createdBy: user.userId }).select("_id");
+    const restaurantIds = restaurants.map((restaurant) => restaurant._id);
+
+    query.restaurant = { $in: restaurantIds };
   }
 
   return Order.find(query)
@@ -224,7 +256,13 @@ const getOrderById = async (orderId, user) => {
   const isOwner = String(order.user._id) === String(user.userId);
   const isDeliveryPartner = order.deliveryPartner && String(order.deliveryPartner._id) === String(user.userId);
 
-  if (user.role === "admin" || isOwner || isDeliveryPartner) {
+  let isRestaurantOwner = false;
+  if (user.role === "restaurant") {
+    const restaurant = await Restaurant.findById(order.restaurant?._id || order.restaurant).select("createdBy");
+    isRestaurantOwner = Boolean(restaurant && String(restaurant.createdBy) === String(user.userId));
+  }
+
+  if (user.role === "admin" || isOwner || isDeliveryPartner || isRestaurantOwner) {
     return order;
   }
 

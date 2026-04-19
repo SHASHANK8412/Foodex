@@ -1,37 +1,80 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import RestaurantCard from "../components/RestaurantCard";
 import { fetchRestaurants } from "../redux/slices/restaurantSlice";
 import RestaurantCardSkeleton from "../components/RestaurantCardSkeleton";
+import { setLocation, setSearchQuery } from "../redux/slices/uiSlice";
 
 const RestaurantsPage = () => {
   const dispatch = useDispatch();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { restaurants, loading, error } = useSelector((state) => state.restaurants);
   const globalQuery = useSelector((state) => state.ui.searchQuery);
-  const [query, setQuery] = useState("");
-  const [ratingFilter, setRatingFilter] = useState("all");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [sortBy, setSortBy] = useState("recommended");
+  const globalLocation = useSelector((state) => state.ui.location);
+  const query = globalQuery || "";
+  const location = globalLocation || "";
+
+  const [ratingFilter, setRatingFilter] = useState(searchParams.get("rating") || "all");
+  const [categoryFilter, setCategoryFilter] = useState(searchParams.get("cuisine") || "all");
+  const [sortBy, setSortBy] = useState(searchParams.get("sort") || "recommended");
 
   useEffect(() => {
     dispatch(fetchRestaurants());
   }, [dispatch]);
 
   useEffect(() => {
-    setQuery(globalQuery || "");
-  }, [globalQuery]);
+    const hasQ = searchParams.has("q");
+    const hasLoc = searchParams.has("loc");
+    const q = searchParams.get("q") || "";
+    const loc = searchParams.get("loc") || "";
+    const rating = searchParams.get("rating") || "all";
+    const cuisine = searchParams.get("cuisine") || "all";
+    const sort = searchParams.get("sort") || "recommended";
+
+    if (hasQ && q !== query) dispatch(setSearchQuery(q));
+    if (hasLoc && loc !== location) dispatch(setLocation(loc));
+
+    setRatingFilter(rating);
+    setCategoryFilter(cuisine);
+    setSortBy(sort);
+    // Intentionally omit query/location from deps to avoid loops; URL is the source of truth.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dispatch, searchParams]);
+
+  const updateUrlParams = (next) => {
+    const params = new URLSearchParams(searchParams);
+    Object.entries(next || {}).forEach(([key, value]) => {
+      const v = value === undefined || value === null ? "" : String(value);
+
+      if (!v || v === "all" || (key === "sort" && v === "recommended")) {
+        params.delete(key);
+        return;
+      }
+
+      params.set(key, v);
+    });
+
+    setSearchParams(params, { replace: true });
+  };
 
   const filtered = useMemo(() => {
     const value = query.trim().toLowerCase();
+    const locationValue = location.trim().toLowerCase();
     const filteredItems = restaurants.filter((item) => {
-      const inName = item.name?.toLowerCase().includes(value);
-      const inCuisine = item.cuisine?.join(" ").toLowerCase().includes(value);
-      const inCity = item.address?.city?.toLowerCase().includes(value);
-      const matchesQuery = !value || inName || inCuisine || inCity;
+      const nameText = String(item.name || "").toLowerCase();
+      const cuisineText = (Array.isArray(item.cuisine) ? item.cuisine.join(" ") : String(item.cuisine || "")).toLowerCase();
+      const cityText = String(item.address?.city || "").toLowerCase();
+      const areaText = String(item.address?.area || "").toLowerCase();
+
+      const matchesQuery = !value || nameText.includes(value) || cuisineText.includes(value) || cityText.includes(value) || areaText.includes(value);
+
+      const matchesLocation = !locationValue || cityText.includes(locationValue) || areaText.includes(locationValue);
+
       const rating = item.rating ?? 4;
       const matchesRating = ratingFilter === "all" || rating >= Number(ratingFilter);
       const matchesCategory = categoryFilter === "all" || item.cuisine?.includes(categoryFilter);
-      return matchesQuery && matchesRating && matchesCategory;
+      return matchesQuery && matchesLocation && matchesRating && matchesCategory;
     });
 
     if (sortBy === "top_rated") {
@@ -47,7 +90,7 @@ const RestaurantsPage = () => {
     }
 
     return filteredItems;
-  }, [restaurants, query, ratingFilter, categoryFilter, sortBy]);
+  }, [restaurants, query, location, ratingFilter, categoryFilter, sortBy]);
 
   const cuisineOptions = useMemo(() => {
     const set = new Set();
@@ -62,16 +105,35 @@ const RestaurantsPage = () => {
           <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-slate-100">Restaurants</h1>
           <p className="text-sm text-slate-600 dark:text-slate-300">Pick from popular kitchens near you.</p>
         </div>
-        <div className="grid w-full gap-2 sm:w-auto sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid w-full gap-2 sm:w-auto sm:grid-cols-2 lg:grid-cols-5">
           <input
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => {
+              const value = event.target.value;
+              dispatch(setSearchQuery(value));
+              updateUrlParams({ q: value.trim() });
+            }}
             placeholder="Search by name, cuisine, city"
             className="w-full rounded-full border border-slate-300 bg-white px-4 py-2 text-sm outline-none ring-orange-400 transition focus:ring dark:border-slate-700 dark:bg-slate-900"
           />
+          <input
+            value={location}
+            onChange={(event) => {
+              const value = event.target.value;
+              dispatch(setLocation(value));
+              updateUrlParams({ loc: value.trim() });
+            }}
+            placeholder="City / Area"
+            className="w-full rounded-full border border-slate-300 bg-white px-4 py-2 text-sm outline-none ring-orange-400 transition focus:ring dark:border-slate-700 dark:bg-slate-900"
+            aria-label="Delivery location"
+          />
           <select
             value={ratingFilter}
-            onChange={(event) => setRatingFilter(event.target.value)}
+            onChange={(event) => {
+              const value = event.target.value;
+              setRatingFilter(value);
+              updateUrlParams({ rating: value });
+            }}
             className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"
           >
             <option value="all">All ratings</option>
@@ -80,7 +142,11 @@ const RestaurantsPage = () => {
           </select>
           <select
             value={categoryFilter}
-            onChange={(event) => setCategoryFilter(event.target.value)}
+            onChange={(event) => {
+              const value = event.target.value;
+              setCategoryFilter(value);
+              updateUrlParams({ cuisine: value });
+            }}
             className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"
           >
             {cuisineOptions.map((option) => (
@@ -91,7 +157,11 @@ const RestaurantsPage = () => {
           </select>
           <select
             value={sortBy}
-            onChange={(event) => setSortBy(event.target.value)}
+            onChange={(event) => {
+              const value = event.target.value;
+              setSortBy(value);
+              updateUrlParams({ sort: value });
+            }}
             className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"
           >
             <option value="recommended">Recommended</option>

@@ -39,6 +39,8 @@ const orderSlice = createSlice({
       const index = state.orders.findIndex((item) => item._id === order._id);
       if (index >= 0) {
         state.orders[index] = order;
+      } else {
+        state.orders.unshift(order);
       }
     },
     clearOrderState(state) {

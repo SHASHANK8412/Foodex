@@ -3,6 +3,7 @@ const User = require("../models/User");
 const ROLES = require("../constants/roles");
 const { ORDER_STATUS } = require("../constants/order");
 const { emitOrderUpdate } = require("../sockets/socketManager");
+const { pushUserNotification } = require("./notificationService");
 
 const autoAssignDeliveryPartner = async ({ orderId, source = "kafka" }) => {
   const order = await Order.findById(orderId);
@@ -38,6 +39,17 @@ const autoAssignDeliveryPartner = async ({ orderId, source = "kafka" }) => {
     .populate("deliveryPartner", "name phone");
 
   emitOrderUpdate(populated, "Delivery partner assigned");
+
+  await pushUserNotification({
+    userId: populated.deliveryPartner?._id || populated.deliveryPartner,
+    type: "info",
+    title: "New delivery assigned",
+    message: `Order ${String(populated._id).slice(-8)} is assigned to you.`,
+    meta: {
+      orderId: String(populated._id),
+      source,
+    },
+  });
   return populated;
 };
 

@@ -45,6 +45,7 @@ const updateStatus = asyncHandler(async (req, res) => {
     note: req.body.note,
     location: req.body.location,
     actorId: req.user.userId,
+    actorRole: req.user.role,
   });
 
   res.status(StatusCodes.OK).json({ success: true, data: order });

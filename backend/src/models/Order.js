@@ -48,6 +48,11 @@ const orderSchema = new mongoose.Schema(
     razorpayPaymentId: { type: String },
     razorpaySignature: { type: String },
     deliveryPartner: { type: mongoose.Schema.Types.ObjectId, ref: "User", index: true },
+    currentDeliveryLocation: {
+      lat: Number,
+      lng: Number,
+    },
+    currentDeliveryLocationUpdatedAt: { type: Date },
     trackingEvents: [
       {
         status: { type: String, required: true },

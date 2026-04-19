@@ -1,10 +1,46 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useSearchParams } from "react-router-dom";
 import { fetchOrderById, fetchOrders, setActiveOrderFromSocket } from "../redux/slices/orderSlice";
 import OrderStatusTimeline from "../components/OrderStatusTimeline";
 import { connectSocket, disconnectSocket } from "../services/socket";
 import { formatCurrency, formatDateTime } from "../utils/format";
+import { MapContainer, Marker, Polyline, TileLayer, useMap } from "react-leaflet";
+import L from "leaflet";
+
+const isValidLatLng = (value) =>
+  Boolean(
+    value &&
+      Number.isFinite(Number(value.lat)) &&
+      Number.isFinite(Number(value.lng)) &&
+      Math.abs(Number(value.lat)) <= 90 &&
+      Math.abs(Number(value.lng)) <= 180
+  );
+
+const createDotIcon = (className) =>
+  L.divIcon({
+    className: "",
+    html: `<div class="${className}"></div>`,
+    iconSize: [14, 14],
+    iconAnchor: [7, 7],
+  });
+
+const driverIcon = createDotIcon(
+  "h-3.5 w-3.5 rounded-full bg-slate-900 ring-4 ring-white/85 shadow-sm dark:bg-slate-50 dark:ring-slate-950/70"
+);
+const destinationIcon = createDotIcon(
+  "h-3.5 w-3.5 rounded-full bg-rose-500 ring-4 ring-white/85 shadow-sm dark:ring-slate-950/70"
+);
+
+const FitBounds = ({ points }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (!map || !points?.length) return;
+    const bounds = L.latLngBounds(points.map((p) => [p.lat, p.lng]));
+    map.fitBounds(bounds.pad(0.35), { animate: true });
+  }, [map, points]);
+  return null;
+};
 
 const OrderTrackingPage = () => {
   const dispatch = useDispatch();
@@ -12,6 +48,8 @@ const OrderTrackingPage = () => {
   const orderId = searchParams.get("orderId");
   const { token } = useSelector((state) => state.auth);
   const { orders, activeOrder, loading } = useSelector((state) => state.orders);
+  const [driverLocation, setDriverLocation] = useState(null);
+  const socketRef = useRef(null);
   const [chatInput, setChatInput] = useState("");
   const [chatMessages, setChatMessages] = useState([
     { from: "delivery", text: "Hi, I picked up your order and I am on my way." },
@@ -38,9 +76,7 @@ const OrderTrackingPage = () => {
       return undefined;
     }
 
-    if (orderId) {
-      socket.emit("order:join", { orderId });
-    }
+    socketRef.current = socket;
 
     const onOrderUpdate = (payload) => {
       if (payload?.order) {
@@ -48,18 +84,73 @@ const OrderTrackingPage = () => {
       }
     };
 
+    const onDeliveryLocation = (payload) => {
+      if (!payload?.orderId) return;
+      if (!isValidLatLng(payload.location)) return;
+      setDriverLocation({
+        lat: Number(payload.location.lat),
+        lng: Number(payload.location.lng),
+        timestamp: payload.timestamp,
+      });
+    };
+
     socket.on("order:update", onOrderUpdate);
+    socket.on("delivery:location", onDeliveryLocation);
 
     return () => {
-      if (orderId) {
-        socket.emit("order:leave", { orderId });
-      }
       socket.off("order:update", onOrderUpdate);
+      socket.off("delivery:location", onDeliveryLocation);
       disconnectSocket();
+      socketRef.current = null;
     };
-  }, [token, orderId, dispatch]);
+  }, [token, dispatch]);
 
   const currentOrder = activeOrder || orders[0];
+
+  const roomOrderId = useMemo(() => {
+    return orderId || currentOrder?._id || null;
+  }, [orderId, currentOrder?._id]);
+
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!socket || !roomOrderId) return undefined;
+
+    socket.emit("order:join", { orderId: roomOrderId });
+    return () => {
+      socket.emit("order:leave", { orderId: roomOrderId });
+    };
+  }, [roomOrderId]);
+
+  useEffect(() => {
+    const persisted = currentOrder?.currentDeliveryLocation;
+    if (!isValidLatLng(persisted)) return;
+    setDriverLocation((prev) => {
+      if (prev?.timestamp) return prev;
+      return {
+        lat: Number(persisted.lat),
+        lng: Number(persisted.lng),
+        timestamp: currentOrder?.currentDeliveryLocationUpdatedAt,
+      };
+    });
+  }, [currentOrder?.currentDeliveryLocation, currentOrder?.currentDeliveryLocationUpdatedAt]);
+  const destination = useMemo(() => {
+    const loc = currentOrder?.deliveryAddress?.location;
+    if (!isValidLatLng(loc)) return null;
+    return { lat: Number(loc.lat), lng: Number(loc.lng) };
+  }, [currentOrder?.deliveryAddress?.location]);
+
+  const mapPoints = useMemo(() => {
+    const points = [];
+    if (driverLocation) points.push({ lat: driverLocation.lat, lng: driverLocation.lng });
+    if (destination) points.push(destination);
+    return points;
+  }, [driverLocation, destination]);
+
+  const mapCenter = useMemo(() => {
+    if (driverLocation) return [driverLocation.lat, driverLocation.lng];
+    if (destination) return [destination.lat, destination.lng];
+    return [20.5937, 78.9629];
+  }, [driverLocation, destination]);
   const etaProgress = useMemo(() => {
     const statusMap = {
       pending: 15,
@@ -108,14 +199,47 @@ const OrderTrackingPage = () => {
               <span>Live map</span>
               <span>{etaProgress}% complete</span>
             </div>
-            <div className="mt-3 h-40 overflow-hidden rounded-xl bg-[linear-gradient(130deg,#e2e8f0,#f8fafc)] p-3 dark:bg-[linear-gradient(130deg,#1e293b,#0f172a)]">
-              <div className="relative h-full w-full rounded-lg border border-dashed border-slate-300 dark:border-slate-600">
-                <div className="absolute left-3 top-6 h-2 w-2 rounded-full bg-emerald-500" />
-                <div className="absolute right-8 bottom-6 h-2 w-2 rounded-full bg-rose-500" />
-                <div
-                  className="absolute top-1/2 h-3 w-3 -translate-y-1/2 rounded-full bg-slate-900 transition-all duration-700 dark:bg-slate-100"
-                  style={{ left: `${Math.max(8, etaProgress - 4)}%` }}
-                />
+            <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white/70 dark:border-slate-700 dark:bg-slate-950/30">
+              <div className="h-44">
+                <MapContainer
+                  center={mapCenter}
+                  zoom={13}
+                  scrollWheelZoom={false}
+                  className="h-full w-full"
+                  attributionControl={true}
+                >
+                  <TileLayer
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  />
+
+                  {mapPoints.length > 0 && <FitBounds points={mapPoints} />}
+
+                  {driverLocation && (
+                    <Marker position={[driverLocation.lat, driverLocation.lng]} icon={driverIcon} />
+                  )}
+                  {destination && <Marker position={[destination.lat, destination.lng]} icon={destinationIcon} />}
+                  {driverLocation && destination && (
+                    <Polyline
+                      positions={[
+                        [driverLocation.lat, driverLocation.lng],
+                        [destination.lat, destination.lng],
+                      ]}
+                      pathOptions={{ weight: 3, opacity: 0.75 }}
+                    />
+                  )}
+                </MapContainer>
+              </div>
+
+              <div className="flex items-center justify-between gap-3 px-3 py-2 text-xs text-slate-600 dark:text-slate-300">
+                <span>
+                  {driverLocation
+                    ? "Delivery partner is moving live"
+                    : "Waiting for delivery partner location"}
+                </span>
+                {driverLocation?.timestamp && (
+                  <span className="text-slate-500 dark:text-slate-400">Updated {formatDateTime(driverLocation.timestamp)}</span>
+                )}
               </div>
             </div>
           </div>

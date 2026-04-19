@@ -8,8 +8,14 @@ import CartPage from "./pages/CartPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import OrderTrackingPage from "./pages/OrderTrackingPage";
 import LoginPage from "./pages/LoginPage";
+import DeliveryLoginPage from "./pages/DeliveryLoginPage";
+import RestaurantLoginPage from "./pages/RestaurantLoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import DeliveryRegisterPage from "./pages/DeliveryRegisterPage";
+import RestaurantRegisterPage from "./pages/RestaurantRegisterPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
+import DeliveryDashboardPage from "./pages/DeliveryDashboardPage";
+import RestaurantDashboardPage from "./pages/RestaurantDashboardPage";
 import NotFoundPage from "./pages/NotFoundPage";
 
 const App = () => {
@@ -37,7 +43,27 @@ const App = () => {
           }
         />
         <Route path="login" element={<LoginPage />} />
+        <Route path="delivery/login" element={<DeliveryLoginPage />} />
+        <Route path="restaurant/login" element={<RestaurantLoginPage />} />
         <Route path="register" element={<RegisterPage />} />
+        <Route path="delivery/register" element={<DeliveryRegisterPage />} />
+        <Route path="restaurant/register" element={<RestaurantRegisterPage />} />
+        <Route
+          path="delivery"
+          element={
+            <ProtectedRoute roles={["delivery"]} redirectTo="/delivery/login">
+              <DeliveryDashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="restaurant"
+          element={
+            <ProtectedRoute roles={["restaurant"]} redirectTo="/restaurant/login">
+              <RestaurantDashboardPage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="admin"
           element={

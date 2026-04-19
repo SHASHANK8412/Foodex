@@ -4,6 +4,7 @@ import api from "../../services/api";
 const initialState = {
   restaurants: [],
   selectedRestaurant: null,
+  myRestaurants: [],
   loading: false,
   error: "",
 };
@@ -15,6 +16,11 @@ export const fetchRestaurants = createAsyncThunk("restaurants/fetchRestaurants",
 
 export const fetchRestaurantById = createAsyncThunk("restaurants/fetchRestaurantById", async (restaurantId) => {
   const response = await api.get("/restaurants/" + restaurantId);
+  return response.data.data;
+});
+
+export const fetchMyRestaurants = createAsyncThunk("restaurants/fetchMyRestaurants", async () => {
+  const response = await api.get("/restaurants/mine");
   return response.data.data;
 });
 
@@ -47,6 +53,20 @@ const restaurantSlice = createSlice({
       .addCase(fetchRestaurantById.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || "Failed to fetch menu";
+      });
+
+    builder
+      .addCase(fetchMyRestaurants.pending, (state) => {
+        state.loading = true;
+        state.error = "";
+      })
+      .addCase(fetchMyRestaurants.fulfilled, (state, action) => {
+        state.loading = false;
+        state.myRestaurants = action.payload;
+      })
+      .addCase(fetchMyRestaurants.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || "Failed to fetch your restaurants";
       });
   },
 });
