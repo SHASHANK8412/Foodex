@@ -2,8 +2,31 @@ const { StatusCodes } = require("http-status-codes");
 const Restaurant = require("../models/Restaurant");
 const MenuItem = require("../models/MenuItem");
 const Order = require("../models/Order");
+const Invoice = require("../models/Invoice");
 const ApiError = require("../utils/ApiError");
 const { ORDER_STATUS } = require("../constants/order");
+const { emitOrderUpdate } = require("../sockets/socketManager");
+const { publishOrderStatusUpdate } = require("../graphql/subscriptionBus");
+const { ensureInvoiceForOrder } = require("./invoiceService");
+
+const normalizeOwnerStatus = (status) => {
+  if (status === "accepted") {
+    return ORDER_STATUS.CONFIRMED;
+  }
+  if (status === "rejected") {
+    return ORDER_STATUS.CANCELLED;
+  }
+  return status;
+};
+
+const allowedTransitions = {
+  [ORDER_STATUS.PENDING]: [ORDER_STATUS.CONFIRMED, ORDER_STATUS.CANCELLED],
+  [ORDER_STATUS.CONFIRMED]: [ORDER_STATUS.PREPARING, ORDER_STATUS.CANCELLED],
+  [ORDER_STATUS.PREPARING]: [ORDER_STATUS.OUT_FOR_DELIVERY, ORDER_STATUS.CANCELLED],
+  [ORDER_STATUS.OUT_FOR_DELIVERY]: [ORDER_STATUS.DELIVERED],
+  [ORDER_STATUS.DELIVERED]: [],
+  [ORDER_STATUS.CANCELLED]: [],
+};
 
 const getOwnerRestaurants = async (ownerId) => {
   return Restaurant.find({ ownerId }).sort({ createdAt: -1 });
@@ -109,6 +132,96 @@ const setFeaturedItems = async ({ ownerId, restaurantId, itemIds = [] }) => {
   return MenuItem.find({ restaurant: restaurantId, featured: true });
 };
 
+const getOwnerOrders = async ({ ownerId, status, search }) => {
+  const restaurants = await Restaurant.find({ ownerId }).select("_id");
+  const restaurantIds = restaurants.map((restaurant) => restaurant._id);
+
+  const query = { restaurant: { $in: restaurantIds } };
+
+  if (status) {
+    query.status = normalizeOwnerStatus(status);
+  }
+
+  if (search) {
+    query.$or = [
+      { shortId: { $regex: search, $options: "i" } },
+      { "deliveryAddress.line1": { $regex: search, $options: "i" } },
+      { "deliveryAddress.city": { $regex: search, $options: "i" } },
+    ];
+  }
+
+  return Order.find(query)
+    .populate("user", "name email phone")
+    .populate("restaurant", "name")
+    .populate("deliveryPartner", "name phone")
+    .sort({ createdAt: -1 });
+};
+
+const updateOwnerOrderStatus = async ({ ownerId, orderId, status, note }) => {
+  const normalizedStatus = normalizeOwnerStatus(status);
+
+  if (!Object.values(ORDER_STATUS).includes(normalizedStatus)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid order status");
+  }
+
+  const order = await Order.findById(orderId).populate("restaurant", "ownerId name address.location");
+  if (!order) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Order not found");
+  }
+
+  if (String(order.restaurant?.ownerId) !== String(ownerId)) {
+    throw new ApiError(StatusCodes.FORBIDDEN, "Forbidden");
+  }
+
+  const isAllowed = (allowedTransitions[order.status] || []).includes(normalizedStatus);
+  if (!isAllowed) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      `Invalid status transition from ${order.status} to ${normalizedStatus}`
+    );
+  }
+
+  order.status = normalizedStatus;
+  order.trackingEvents.push({
+    status: normalizedStatus,
+    note: note || `Order moved to ${normalizedStatus}`,
+    updatedBy: ownerId,
+  });
+  await order.save();
+
+  if (normalizedStatus === ORDER_STATUS.CONFIRMED) {
+    await ensureInvoiceForOrder(order._id);
+  }
+
+  const updated = await Order.findById(order._id)
+    .populate("restaurant", "name address.location")
+    .populate("user", "name email phone")
+    .populate("deliveryPartner", "name phone");
+
+  emitOrderUpdate(updated, note || "Restaurant updated order status");
+  await publishOrderStatusUpdate(updated);
+
+  return updated;
+};
+
+const getOwnerInvoiceByOrder = async ({ ownerId, orderId }) => {
+  const order = await Order.findById(orderId).populate("restaurant", "ownerId");
+  if (!order) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Order not found");
+  }
+
+  if (String(order.restaurant?.ownerId) !== String(ownerId)) {
+    throw new ApiError(StatusCodes.FORBIDDEN, "Forbidden");
+  }
+
+  const invoice = await Invoice.findOne({ order: orderId });
+  if (!invoice) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Invoice not found for this order");
+  }
+
+  return invoice;
+};
+
 module.exports = {
   getOwnerRestaurants,
   getOwnerDashboard,
@@ -117,4 +230,7 @@ module.exports = {
   deleteMenuItemForOwner,
   updateRestaurantPromotions,
   setFeaturedItems,
+  getOwnerOrders,
+  updateOwnerOrderStatus,
+  getOwnerInvoiceByOrder,
 };

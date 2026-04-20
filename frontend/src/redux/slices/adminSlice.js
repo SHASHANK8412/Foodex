@@ -5,6 +5,18 @@ const initialState = {
   partners: [],
   loading: false,
   error: "",
+  paymentDashboard: {
+    summary: {
+      grossRevenue: 0,
+      totalTransactions: 0,
+      successCount: 0,
+      failedCount: 0,
+    },
+    dailySeries: [],
+    monthlySeries: [],
+    transactions: [],
+  },
+  paymentLoading: false,
 };
 
 export const fetchDeliveryPartners = createAsyncThunk("admin/fetchDeliveryPartners", async () => {
@@ -29,6 +41,11 @@ export const updateOrderStatus = createAsyncThunk("admin/updateOrderStatus", asy
     location,
   });
 
+  return response.data.data;
+});
+
+export const fetchPaymentDashboard = createAsyncThunk("admin/fetchPaymentDashboard", async (filters = {}) => {
+  const response = await api.get("/admin/payments/dashboard", { params: filters });
   return response.data.data;
 });
 
@@ -64,6 +81,17 @@ const adminSlice = createSlice({
       })
       .addCase(updateOrderStatus.rejected, (state, action) => {
         state.error = action.error.message || "Failed to update order status";
+      })
+      .addCase(fetchPaymentDashboard.pending, (state) => {
+        state.paymentLoading = true;
+      })
+      .addCase(fetchPaymentDashboard.fulfilled, (state, action) => {
+        state.paymentLoading = false;
+        state.paymentDashboard = action.payload;
+      })
+      .addCase(fetchPaymentDashboard.rejected, (state, action) => {
+        state.paymentLoading = false;
+        state.error = action.error.message || "Failed to fetch payment dashboard";
       });
   },
 });

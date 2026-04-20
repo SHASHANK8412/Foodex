@@ -42,6 +42,18 @@ const semanticSearch = asyncHandler(async (req, res) => {
   res.status(StatusCodes.OK).json({ success: true, data });
 });
 
+const compareItem = asyncHandler(async (req, res) => {
+  const data = await aiService.compareDishAcrossRestaurants({
+    dish: req.body.item || req.body.dish,
+    budget: req.body.budget,
+    isVeg: req.body.isVeg,
+    spicy: req.body.spicy,
+    limit: Number(req.body.limit || 8),
+  });
+
+  res.status(StatusCodes.OK).json({ success: true, data });
+});
+
 const recommendations = asyncHandler(async (req, res) => {
   const data = await aiService.getCollaborativeRecommendations({
     userId: String(req.user.userId),
@@ -106,6 +118,7 @@ module.exports = {
   chat,
   chatStream,
   semanticSearch,
+  compareItem,
   recommendations,
   quickReorder,
   generateAiContent,

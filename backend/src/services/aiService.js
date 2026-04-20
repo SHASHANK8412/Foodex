@@ -5,10 +5,13 @@ const { StatusCodes } = require("http-status-codes");
 const Order = require("../models/Order");
 const MenuItem = require("../models/MenuItem");
 const Restaurant = require("../models/Restaurant");
+const Review = require("../models/Review");
 const ApiError = require("../utils/ApiError");
 const env = require("../config/env");
 
 const memoryStore = new Map();
+const sessionStateStore = new Map();
+let geminiIntentInferenceEnabled = true;
 
 const getMemory = (userId) => {
   if (!memoryStore.has(userId)) {
@@ -23,6 +26,17 @@ const addToMemory = (userId, role, content) => {
   if (memory.length > 12) {
     memory.shift();
   }
+};
+
+const getSessionState = (userId) => {
+  if (!sessionStateStore.has(userId)) {
+    sessionStateStore.set(userId, {
+      lastAddToCartPayload: null,
+      lastSuggestions: [],
+    });
+  }
+
+  return sessionStateStore.get(userId);
 };
 
 const getEmbeddingsClient = () => {
@@ -139,10 +153,35 @@ const semanticSearchMenuItems = async ({ query, restaurantId, limit = 12 }) => {
     .limit(80);
 
   if (!embeddingsClient) {
-    const q = query.toLowerCase();
-    return docs
-      .filter((item) => buildSemanticText(item).toLowerCase().includes(q))
-      .slice(0, limit);
+    const normalizedQuery = String(query || "").toLowerCase().trim();
+    const tokens = normalizedQuery
+      .split(/\s+/)
+      .map((token) => token.replace(/[^a-z0-9]/g, ""))
+      .filter((token) => token.length >= 3);
+
+    const scored = docs
+      .map((item) => {
+        const haystack = buildSemanticText(item).toLowerCase();
+
+        if (!tokens.length) {
+          return { item, score: haystack.includes(normalizedQuery) ? 1 : 0 };
+        }
+
+        let score = 0;
+        tokens.forEach((token) => {
+          if (haystack.includes(token)) {
+            score += 1;
+          }
+        });
+
+        return { item, score };
+      })
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit)
+      .map((entry) => entry.item);
+
+    return scored;
   }
 
   const queryVector = await embeddingsClient.embedQuery(query);
@@ -250,6 +289,213 @@ const extractBudget = (text) => {
   return match ? Number(match[1]) : null;
 };
 
+const extractQuantity = (text) => {
+  const quantityMatch = text.match(/(?:\bfor\b|\bqty\b|\bquantity\b|\badd\b|\border\b)\s*(\d{1,2})\b/i);
+  if (!quantityMatch) {
+    return 1;
+  }
+
+  return Math.max(1, Math.min(10, Number(quantityMatch[1]) || 1));
+};
+
+const inferDishFromMessage = (message = "") => {
+  const cleaned = message
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!cleaned) {
+    return null;
+  }
+
+  const stopWords = new Set([
+    "order",
+    "add",
+    "best",
+    "cheapest",
+    "recommend",
+    "show",
+    "find",
+    "me",
+    "for",
+    "under",
+    "below",
+    "within",
+    "price",
+    "with",
+    "rating",
+    "review",
+    "reviews",
+    "restaurant",
+    "restaurants",
+    "compare",
+    "different",
+    "spicy",
+    "veg",
+    "vegetarian",
+    "please",
+    "rs",
+    "rupees",
+  ]);
+
+  const tokens = cleaned
+    .split(" ")
+    .filter((token) => token && !stopWords.has(token) && !/^\d+$/.test(token));
+
+  if (!tokens.length) {
+    return null;
+  }
+
+  return tokens.slice(0, 4).join(" ");
+};
+
+const messageWantsComparison = (message = "") => {
+  return /(best|compare|comparison|different restaurants|cheapest|lowest price|top rated|rating|review)/i.test(
+    message
+  );
+};
+
+const isGreetingMessage = (message = "") => {
+  const cleaned = String(message).trim().toLowerCase();
+  return /^(hi|hello|hey|hii|yo|hola|namaste|good morning|good afternoon|good evening)$/.test(cleaned);
+};
+
+const messageWantsAddToCart = (message = "") => {
+  return /(add(\s+\d+)?\s+(it\s+)?to\s+cart|add\s+to\s+cart|place\s+order|order\s+it|checkout)/i.test(message);
+};
+
+const compareDishAcrossRestaurants = async ({
+  dish,
+  limit = 8,
+  budget,
+  isVeg,
+  spicy,
+}) => {
+  if (!dish || String(dish).trim().length < 2) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Please provide a dish/item name to compare");
+  }
+
+  const query = {
+    isAvailable: true,
+    name: { $regex: String(dish).trim(), $options: "i" },
+  };
+
+  if (typeof isVeg === "boolean" && isVeg) {
+    query.isVeg = true;
+  }
+
+  if (budget) {
+    query.price = { $lte: Number(budget) };
+  }
+
+  const candidates = await MenuItem.find(query)
+    .populate("restaurant", "name rating ratingsCount estimatedWaitMinutes imageUrl")
+    .sort({ price: 1, popularityScore: -1 })
+    .limit(120);
+
+  let normalizedCandidates = candidates;
+  if (!normalizedCandidates.length) {
+    // Fall back to semantic query to avoid hard failures when wording differs from menu naming.
+    normalizedCandidates = await semanticSearchMenuItems({
+      query: String(dish),
+      limit: 40,
+    });
+  }
+
+  const spicyFiltered = spicy
+    ? normalizedCandidates.filter(
+        (item) =>
+          (item.tags || []).some((tag) => String(tag).toLowerCase().includes("spicy")) ||
+          item.description?.toLowerCase().includes("spicy")
+      )
+    : normalizedCandidates;
+
+  const bestPerRestaurant = new Map();
+
+  spicyFiltered.forEach((item) => {
+    const restaurantId = String(item.restaurant?._id || item.restaurant || "");
+    if (!restaurantId) {
+      return;
+    }
+
+    const existing = bestPerRestaurant.get(restaurantId);
+    const itemName = String(item.name || "").toLowerCase();
+    const dishText = String(dish).toLowerCase();
+    const exactBoost = itemName === dishText ? 10 : itemName.includes(dishText) ? 5 : 0;
+    const restaurantRating = Number(item.restaurant?.rating || 0);
+    const ratingsCount = Number(item.restaurant?.ratingsCount || 0);
+    const reviewBoost = Math.min(6, Math.log1p(ratingsCount));
+    const valuePenalty = Number(item.price || 0) / 120;
+    const score = restaurantRating * 8 + reviewBoost + exactBoost - valuePenalty;
+
+    const candidate = {
+      menuItemId: String(item._id),
+      menuItemName: item.name,
+      price: item.price,
+      isVeg: Boolean(item.isVeg),
+      restaurantId,
+      restaurantName: item.restaurant?.name || "Restaurant",
+      rating: Number((item.restaurant?.rating || 0).toFixed(1)),
+      ratingsCount,
+      etaMinutes: Number(item.restaurant?.estimatedWaitMinutes || 0),
+      score: Number(score.toFixed(2)),
+    };
+
+    if (!existing || candidate.score > existing.score) {
+      bestPerRestaurant.set(restaurantId, candidate);
+    }
+  });
+
+  const ranked = [...bestPerRestaurant.values()]
+    .sort((a, b) => b.score - a.score)
+    .slice(0, Math.max(1, Math.min(20, Number(limit) || 8)));
+
+  if (!ranked.length) {
+    return {
+      dish,
+      comparedAt: new Date().toISOString(),
+      options: [],
+      best: null,
+    };
+  }
+
+  const restaurantIds = ranked.map((item) => item.restaurantId);
+  const recentReviews = await Review.find({ restaurant: { $in: restaurantIds } })
+    .populate("user", "name")
+    .sort({ createdAt: -1 })
+    .limit(300);
+
+  const firstReviewByRestaurant = new Map();
+  recentReviews.forEach((review) => {
+    const key = String(review.restaurant);
+    if (!firstReviewByRestaurant.has(key)) {
+      firstReviewByRestaurant.set(key, review);
+    }
+  });
+
+  const options = ranked.map((item) => {
+    const review = firstReviewByRestaurant.get(item.restaurantId);
+    return {
+      ...item,
+      latestReview: review
+        ? {
+            rating: review.rating,
+            comment: review.comment,
+            author: review.user?.name || "Customer",
+          }
+        : null,
+    };
+  });
+
+  return {
+    dish,
+    comparedAt: new Date().toISOString(),
+    options,
+    best: options[0],
+  };
+};
+
 const extractJsonBlock = (rawText = "") => {
   const start = rawText.indexOf("{");
   const end = rawText.lastIndexOf("}");
@@ -265,7 +511,7 @@ const extractJsonBlock = (rawText = "") => {
 };
 
 const inferIntentWithGemini = async ({ memory, message }) => {
-  if (!env.googleGeminiApiKey) {
+  if (!env.googleGeminiApiKey || !geminiIntentInferenceEnabled) {
     return null;
   }
 
@@ -279,13 +525,63 @@ const inferIntentWithGemini = async ({ memory, message }) => {
     `User message: ${message}`,
   ].join("\n");
 
-  const raw = await generateContent(prompt);
-  return extractJsonBlock(raw);
+  try {
+    const raw = await generateContent(prompt);
+    return extractJsonBlock(raw);
+  } catch (error) {
+    const errorText = String(error?.message || "").toLowerCase();
+    if (error?.status === 429 || errorText.includes("quota exceeded") || errorText.includes("too many requests")) {
+      geminiIntentInferenceEnabled = false;
+      return null;
+    }
+
+    return null;
+  }
 };
 
 const chatOrderAssistant = async ({ userId, message }) => {
   const memory = getMemory(userId);
+  const sessionState = getSessionState(userId);
   addToMemory(userId, "user", message);
+
+  if (isGreetingMessage(message)) {
+    const greetingReply = sessionState.lastAddToCartPayload
+      ? `Hi! I can continue with ${sessionState.lastAddToCartPayload.name} at Rs.${sessionState.lastAddToCartPayload.price}, or help you find something else.`
+      : "Hi! Tell me what you want to eat and I will find the best options for you.";
+
+    addToMemory(userId, "assistant", greetingReply);
+    return {
+      reply: greetingReply,
+      actions: [],
+      suggestions: sessionState.lastSuggestions || [],
+      memory: getMemory(userId),
+    };
+  }
+
+  if (messageWantsAddToCart(message) && sessionState.lastAddToCartPayload) {
+    const requestedQuantity = extractQuantity(message);
+    const quantity = requestedQuantity || sessionState.lastAddToCartPayload.quantity || 1;
+
+    const payload = {
+      ...sessionState.lastAddToCartPayload,
+      quantity,
+    };
+
+    const addReply = `Done. I can add ${quantity} x ${payload.name} to your cart now.`;
+    addToMemory(userId, "assistant", addReply);
+
+    return {
+      reply: addReply,
+      actions: [
+        {
+          type: "add_to_cart",
+          payload,
+        },
+      ],
+      suggestions: sessionState.lastSuggestions || [],
+      memory: getMemory(userId),
+    };
+  }
 
   let parsedIntent = {
     intent: "search",
@@ -294,7 +590,7 @@ const chatOrderAssistant = async ({ userId, message }) => {
     spicy: false,
     isVeg: false,
     budget: extractBudget(message),
-    quantity: 1,
+    quantity: extractQuantity(message),
   };
 
   if (env.googleGeminiApiKey) {
@@ -312,6 +608,68 @@ const chatOrderAssistant = async ({ userId, message }) => {
   }
 
   const semanticQuery = parsedIntent.semanticQuery || message;
+  const inferredDish = parsedIntent.dish || inferDishFromMessage(message);
+  const wantsComparison = parsedIntent.intent === "compare" || messageWantsComparison(message);
+
+  if (wantsComparison && inferredDish) {
+    const comparison = await compareDishAcrossRestaurants({
+      dish: inferredDish,
+      budget: parsedIntent.budget,
+      isVeg: parsedIntent.isVeg,
+      spicy: parsedIntent.spicy,
+      limit: 6,
+    });
+
+    if (!comparison.options.length) {
+      const noCompareReply = `I could not find ${inferredDish} across multiple restaurants right now. Try another item or relax filters.`;
+      addToMemory(userId, "assistant", noCompareReply);
+      return {
+        reply: noCompareReply,
+        actions: [],
+        suggestions: [],
+        comparison,
+        memory: getMemory(userId),
+      };
+    }
+
+    const best = comparison.best;
+    const optionsText = comparison.options
+      .slice(0, 3)
+      .map(
+        (option, idx) =>
+          `${idx + 1}. ${option.restaurantName} - ${option.menuItemName} (Rs.${option.price}, ${option.rating}★ from ${option.ratingsCount} reviews)`
+      )
+      .join(" ");
+
+    const reply = `Best ${comparison.dish}: ${best.menuItemName} from ${best.restaurantName} at Rs.${best.price} (${best.rating}★, ${best.ratingsCount} reviews). ${optionsText}`;
+
+    const actions = [
+      {
+        type: "add_to_cart",
+        payload: {
+          menuItemId: best.menuItemId,
+          restaurantId: best.restaurantId,
+          name: best.menuItemName,
+          price: best.price,
+          quantity: parsedIntent.quantity || 1,
+        },
+      },
+    ];
+
+    sessionState.lastAddToCartPayload = actions[0].payload;
+    sessionState.lastSuggestions = comparison.options;
+
+    addToMemory(userId, "assistant", reply);
+
+    return {
+      reply,
+      actions,
+      suggestions: comparison.options,
+      comparison,
+      memory: getMemory(userId),
+    };
+  }
+
   let candidates = await semanticSearchMenuItems({ query: semanticQuery, limit: 10 });
 
   if (parsedIntent.budget) {
@@ -326,8 +684,17 @@ const chatOrderAssistant = async ({ userId, message }) => {
     candidates = candidates.filter((item) => item.isVeg === true);
   }
 
+  const candidatesBeforeDishFilter = [...candidates];
+
   if (parsedIntent.dish) {
     candidates = candidates.filter((item) => item.name.toLowerCase().includes(String(parsedIntent.dish).toLowerCase()));
+  } else if (inferredDish) {
+    candidates = candidates.filter((item) => item.name.toLowerCase().includes(String(inferredDish).toLowerCase()));
+  }
+
+  if (!candidates.length && candidatesBeforeDishFilter.length) {
+    // Fall back to semantic options if the inferred dish text was too strict.
+    candidates = candidatesBeforeDishFilter;
   }
 
   const topPick = candidates[0] || null;
@@ -336,17 +703,22 @@ const chatOrderAssistant = async ({ userId, message }) => {
   const actions = [];
 
   if (topPick) {
+    const addToCartPayload = {
+      menuItemId: String(topPick._id),
+      restaurantId: String(topPick.restaurant?._id || topPick.restaurant),
+      name: topPick.name,
+      image: topPick.image?.url || "",
+      price: topPick.price,
+      quantity: parsedIntent.quantity || 1,
+    };
+
     actions.push({
       type: "add_to_cart",
-      payload: {
-        menuItemId: String(topPick._id),
-        restaurantId: String(topPick.restaurant?._id || topPick.restaurant),
-        name: topPick.name,
-        image: topPick.image?.url || "",
-        price: topPick.price,
-        quantity: parsedIntent.quantity || 1,
-      },
+      payload: addToCartPayload,
     });
+
+    sessionState.lastAddToCartPayload = addToCartPayload;
+    sessionState.lastSuggestions = candidates.slice(0, 5);
 
     assistantMessage = `I found ${topPick.name} at Rs.${topPick.price}. I can add ${parsedIntent.quantity || 1} to your cart now.`;
   }
@@ -385,6 +757,7 @@ const ensureAiAccess = () => {
 
 module.exports = {
   semanticSearchMenuItems,
+  compareDishAcrossRestaurants,
   getCollaborativeRecommendations,
   getQuickReorderPrediction,
   chatOrderAssistant,

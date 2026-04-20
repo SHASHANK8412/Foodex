@@ -1,6 +1,7 @@
 const { StatusCodes } = require("http-status-codes");
 const asyncHandler = require("../utils/asyncHandler");
 const ownerService = require("../services/ownerService");
+const { toPdfBuffer } = require("../services/invoiceService");
 
 const getDashboard = asyncHandler(async (req, res) => {
   const data = await ownerService.getOwnerDashboard(req.user.userId);
@@ -71,6 +72,48 @@ const setFeaturedItems = asyncHandler(async (req, res) => {
   res.status(StatusCodes.OK).json({ success: true, data });
 });
 
+const listOwnerOrders = asyncHandler(async (req, res) => {
+  const data = await ownerService.getOwnerOrders({
+    ownerId: req.user.userId,
+    status: req.query.status,
+    search: req.query.search,
+  });
+
+  res.status(StatusCodes.OK).json({ success: true, data });
+});
+
+const updateOwnerOrderStatus = asyncHandler(async (req, res) => {
+  const data = await ownerService.updateOwnerOrderStatus({
+    ownerId: req.user.userId,
+    orderId: req.params.orderId,
+    status: req.body.status,
+    note: req.body.note,
+  });
+
+  res.status(StatusCodes.OK).json({ success: true, data });
+});
+
+const getOwnerOrderInvoice = asyncHandler(async (req, res) => {
+  const data = await ownerService.getOwnerInvoiceByOrder({
+    ownerId: req.user.userId,
+    orderId: req.params.orderId,
+  });
+
+  res.status(StatusCodes.OK).json({ success: true, data });
+});
+
+const downloadOwnerOrderInvoice = asyncHandler(async (req, res) => {
+  const invoice = await ownerService.getOwnerInvoiceByOrder({
+    ownerId: req.user.userId,
+    orderId: req.params.orderId,
+  });
+
+  const pdfBuffer = await toPdfBuffer(invoice);
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename=${invoice.invoiceNumber}.pdf`);
+  res.status(StatusCodes.OK).send(pdfBuffer);
+});
+
 module.exports = {
   getDashboard,
   listMyRestaurants,
@@ -79,4 +122,8 @@ module.exports = {
   deleteMenuItem,
   updatePromotions,
   setFeaturedItems,
+  listOwnerOrders,
+  updateOwnerOrderStatus,
+  getOwnerOrderInvoice,
+  downloadOwnerOrderInvoice,
 };

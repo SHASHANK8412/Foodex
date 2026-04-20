@@ -17,6 +17,8 @@ const restaurantSchema = new mongoose.Schema(
     },
     contactPhone: { type: String, trim: true },
     imageUrl: { type: String, trim: true },
+    rating: { type: Number, default: 4.2, min: 0, max: 5 },
+    ratingsCount: { type: Number, default: 0, min: 0 },
     isOpen: { type: Boolean, default: true },
     avgPrepMinutes: { type: Number, default: 22 },
     activeOrders: { type: Number, default: 0 },

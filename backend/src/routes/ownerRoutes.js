@@ -11,6 +11,10 @@ router.use(protect, authorize(ROLES.OWNER, ROLES.ADMIN));
 
 router.get("/dashboard", ownerController.getDashboard);
 router.get("/restaurants", ownerController.listMyRestaurants);
+router.get("/orders", ownerController.listOwnerOrders);
+router.patch("/orders/:orderId/status", ownerController.updateOwnerOrderStatus);
+router.get("/orders/:orderId/invoice", ownerController.getOwnerOrderInvoice);
+router.get("/orders/:orderId/invoice/pdf", ownerController.downloadOwnerOrderInvoice);
 
 router.post("/restaurants/:restaurantId/menu", upload.single("image"), ownerController.createMenuItem);
 router.patch("/menu/:menuItemId", upload.single("image"), ownerController.updateMenuItem);

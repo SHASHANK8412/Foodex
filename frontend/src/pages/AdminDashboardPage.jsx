@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { Link } from "react-router-dom";
 import {
   assignDeliveryPartner,
   createDeliveryPartner,
@@ -41,6 +42,14 @@ const AdminDashboardPage = () => {
       <header>
         <h1 className="text-3xl font-black tracking-tight text-slate-900">Admin dashboard</h1>
         <p className="text-sm text-slate-600">Manage operations, riders and order lifecycle.</p>
+        <div className="mt-3">
+          <Link
+            to="/admin/payments"
+            className="inline-flex rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-500 hover:text-slate-900"
+          >
+            Open payments command center
+          </Link>
+        </div>
       </header>
 
       <section className="grid gap-4 sm:grid-cols-3">

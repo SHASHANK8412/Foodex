@@ -145,8 +145,13 @@ If files are not present, backend falls back to MongoDB aggregate/heuristic calc
 - `GET /api/orders/:orderId/payment-status` (user/admin/delivery with access)
 - `PATCH /api/orders/:orderId/status` (admin/delivery)
 - `PATCH /api/orders/:orderId/assign-delivery` (admin)
+- `GET /api/owner/orders` (owner/admin)
+- `PATCH /api/owner/orders/:orderId/status` (owner/admin)
+- `GET /api/owner/orders/:orderId/invoice` (owner/admin)
+- `GET /api/owner/orders/:orderId/invoice/pdf` (owner/admin)
 - `GET /api/delivery/partners` (admin)
 - `POST /api/delivery/partners` (admin)
+- `GET /api/admin/payments/dashboard` (admin)
 
 ## Socket Events
 

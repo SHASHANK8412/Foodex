@@ -7,13 +7,17 @@ import RestaurantMenuPage from "./pages/RestaurantMenuPage";
 import CartPage from "./pages/CartPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import OrderTrackingPage from "./pages/OrderTrackingPage";
+import OrderConfirmationPage from "./pages/OrderConfirmationPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import AdminAnalyticsPage from "./pages/AdminAnalyticsPage";
+import AdminPaymentsPage from "./pages/AdminPaymentsPage";
 import DeliveryDashboardPage from "./pages/DeliveryDashboardPage";
 import RestaurantDashboardPage from "./pages/RestaurantDashboardPage";
 import MenuDashboardPage from "./pages/MenuDashboardPage";
+import UserDashboardPage from "./pages/UserDashboardPage";
+import GroupOrderPage from "./pages/GroupOrderPage";
 import NotFoundPage from "./pages/NotFoundPage";
 
 const App = () => {
@@ -40,6 +44,30 @@ const App = () => {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="order-confirmation"
+          element={
+            <ProtectedRoute roles={["user", "admin"]}>
+              <OrderConfirmationPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="user-dashboard"
+          element={
+            <ProtectedRoute roles={["user", "admin"]}>
+              <UserDashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="group-order/:inviteCode"
+          element={
+            <ProtectedRoute roles={["user", "admin"]}>
+              <GroupOrderPage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="login" element={<LoginPage />} />
         <Route path="register" element={<RegisterPage />} />
         <Route
@@ -55,6 +83,14 @@ const App = () => {
           element={
             <ProtectedRoute roles={["admin"]}>
               <AdminAnalyticsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="admin/payments"
+          element={
+            <ProtectedRoute roles={["admin"]}>
+              <AdminPaymentsPage />
             </ProtectedRoute>
           }
         />

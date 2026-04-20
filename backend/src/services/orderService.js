@@ -4,6 +4,7 @@ const env = require("../config/env");
 const Restaurant = require("../models/Restaurant");
 const MenuItem = require("../models/MenuItem");
 const Order = require("../models/Order");
+const Payment = require("../models/Payment");
 const { ORDER_STATUS, PAYMENT_STATUS } = require("../constants/order");
 const KAFKA_TOPICS = require("../constants/kafkaTopics");
 const ApiError = require("../utils/ApiError");
@@ -14,9 +15,78 @@ const { refreshRestaurantDemand } = require("./demandService");
 const loyaltyService = require("./loyaltyService");
 const { smsQueue, pushNotificationQueue, analyticsQueue } = require("../queues");
 const { publishOrderStatusUpdate } = require("../graphql/subscriptionBus");
+const { pushUserNotification } = require("./notificationService");
+const { autoAssignDeliveryPartner } = require("./deliveryAssignmentService");
 
 const TAX_RATE = 0.05;
 const DELIVERY_FEE = 40;
+
+const processOrderEventFallback = async ({ eventType, orderId, userId }) => {
+  if (env.kafkaEnabled) {
+    return;
+  }
+
+  if (eventType === KAFKA_TOPICS.ORDER_CREATED) {
+    await pushUserNotification({
+      userId,
+      type: "order_created",
+      title: "Order placed",
+      message: `Your order #${orderId} has been placed successfully`,
+      meta: { orderId },
+    });
+
+    await autoAssignDeliveryPartner({
+      orderId,
+      source: "direct_fallback_order_created",
+    });
+  }
+
+  if (eventType === KAFKA_TOPICS.ORDER_PAID) {
+    await pushUserNotification({
+      userId,
+      type: "payment_success",
+      title: "Payment successful",
+      message: `Payment confirmed for order #${orderId}`,
+      meta: { orderId },
+    });
+
+    await autoAssignDeliveryPartner({
+      orderId,
+      source: "direct_fallback_order_paid",
+    });
+  }
+};
+
+const upsertPaymentTransaction = async ({
+  order,
+  status,
+  razorpayOrderId,
+  razorpayPaymentId,
+  metadata,
+}) => {
+  try {
+    await Payment.findOneAndUpdate(
+      { order: order._id },
+      {
+        user: order.user,
+        restaurant: order.restaurant,
+        order: order._id,
+        provider: "razorpay",
+        amount: order.totalAmount,
+        currency: "INR",
+        status,
+        razorpayOrderId: razorpayOrderId || order.razorpayOrderId,
+        razorpayPaymentId: razorpayPaymentId || order.razorpayPaymentId,
+        ...(status === PAYMENT_STATUS.PAID ? { paidAt: new Date() } : {}),
+        lastEventAt: new Date(),
+        metadata,
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+  } catch (_error) {
+    // Payment tracking should not block order flow.
+  }
+};
 
 const geocodeWithMaptiler = async (deliveryAddress) => {
   if (!env.maptilerApiKey || !deliveryAddress) {
@@ -172,6 +242,13 @@ const createOrder = async ({ userId, restaurantId, items, deliveryAddress }) => 
   draftOrder.razorpayOrderId = razorpayOrder.id;
   await draftOrder.save();
 
+  await upsertPaymentTransaction({
+    order: draftOrder,
+    status: PAYMENT_STATUS.PENDING,
+    razorpayOrderId: razorpayOrder.id,
+    metadata: { source: "checkout_create" },
+  });
+
   const populated = await Order.findById(draftOrder._id).populate("restaurant", "name address.location");
   emitOrderUpdate(populated, "Order placed and payment initiated");
   await refreshRestaurantDemand(restaurantId);
@@ -182,6 +259,12 @@ const createOrder = async ({ userId, restaurantId, items, deliveryAddress }) => 
     restaurantId: String(restaurantId),
     totalAmount,
     paymentStatus: PAYMENT_STATUS.PENDING,
+  });
+
+  await processOrderEventFallback({
+    eventType: KAFKA_TOPICS.ORDER_CREATED,
+    orderId: String(populated._id),
+    userId: String(userId),
   });
 
   return {
@@ -229,6 +312,13 @@ const verifyOrderPayment = async ({ orderId, razorpayOrderId, razorpayPaymentId,
   if (!isValid) {
     order.paymentStatus = PAYMENT_STATUS.FAILED;
     await order.save();
+    await upsertPaymentTransaction({
+      order,
+      status: PAYMENT_STATUS.FAILED,
+      razorpayOrderId,
+      razorpayPaymentId,
+      metadata: { source: "checkout_verify", reason: "signature_mismatch" },
+    });
     throw new ApiError(StatusCodes.BAD_REQUEST, "Payment verification failed");
   }
 
@@ -244,6 +334,14 @@ const verifyOrderPayment = async ({ orderId, razorpayOrderId, razorpayPaymentId,
 
   await order.save();
 
+  await upsertPaymentTransaction({
+    order,
+    status: PAYMENT_STATUS.PAID,
+    razorpayOrderId,
+    razorpayPaymentId,
+    metadata: { source: "checkout_verify" },
+  });
+
   const populated = await Order.findById(order._id).populate("restaurant", "name address.location").populate("user", "name email");
   emitOrderUpdate(populated, "Payment successful");
   await publishOrderStatusUpdate(populated);
@@ -255,6 +353,12 @@ const verifyOrderPayment = async ({ orderId, razorpayOrderId, razorpayPaymentId,
     restaurantId: String(populated.restaurant?._id || populated.restaurant),
     totalAmount: populated.totalAmount,
     paymentStatus: PAYMENT_STATUS.PAID,
+  });
+
+  await processOrderEventFallback({
+    eventType: KAFKA_TOPICS.ORDER_PAID,
+    orderId: String(populated._id),
+    userId: String(populated.user?._id || populated.user),
   });
 
   return populated;
@@ -506,6 +610,14 @@ const processRazorpayWebhook = async ({ rawBody, signature }) => {
 
       await order.save();
 
+      await upsertPaymentTransaction({
+        order,
+        status: PAYMENT_STATUS.PAID,
+        razorpayOrderId: entity.order_id,
+        razorpayPaymentId: entity.id,
+        metadata: { source: "webhook", event },
+      });
+
       const populated = await Order.findById(order._id)
         .populate("restaurant", "name address.location")
         .populate("user", "name email")
@@ -521,6 +633,12 @@ const processRazorpayWebhook = async ({ rawBody, signature }) => {
         totalAmount: populated.totalAmount,
         paymentStatus: PAYMENT_STATUS.PAID,
       });
+
+      await processOrderEventFallback({
+        eventType: KAFKA_TOPICS.ORDER_PAID,
+        orderId: String(populated._id),
+        userId: String(populated.user?._id || populated.user),
+      });
     }
 
     return { processed: true, event, orderId: String(order._id) };
@@ -533,6 +651,14 @@ const processRazorpayWebhook = async ({ rawBody, signature }) => {
       note: "Payment failed via webhook",
     });
     await order.save();
+
+    await upsertPaymentTransaction({
+      order,
+      status: PAYMENT_STATUS.FAILED,
+      razorpayOrderId: entity.order_id,
+      razorpayPaymentId: entity.id,
+      metadata: { source: "webhook", event },
+    });
 
     const populated = await Order.findById(order._id)
       .populate("restaurant", "name address.location")

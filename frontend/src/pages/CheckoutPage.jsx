@@ -110,7 +110,7 @@ const CheckoutPage = () => {
     }
 
     dispatch(clearCart());
-    navigate("/orders/track?orderId=" + order._id);
+    navigate("/order-confirmation?orderId=" + order._id);
   };
 
   if (!items.length) {

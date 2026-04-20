@@ -7,6 +7,7 @@ import { fetchMe } from "../redux/slices/authSlice";
 import ToastContainer from "./ToastContainer";
 import FloatingAIChatWidget from "./FloatingAIChatWidget";
 import InstallPrompt from "./InstallPrompt";
+import QuickCommandPalette from "./QuickCommandPalette";
 
 const Layout = () => {
   const dispatch = useDispatch();
@@ -34,6 +35,7 @@ const Layout = () => {
         <ToastContainer />
         <FloatingAIChatWidget />
         <InstallPrompt />
+        <QuickCommandPalette />
       </div>
     </div>
   );

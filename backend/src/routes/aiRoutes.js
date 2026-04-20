@@ -16,6 +16,20 @@ router.post(
 router.use(protect);
 
 router.post(
+  "/compare-item",
+  body("item").optional().trim(),
+  body("dish").optional().trim(),
+  body().custom((value) => {
+    if (!value.item && !value.dish) {
+      throw new Error("item or dish is required");
+    }
+    return true;
+  }),
+  validate,
+  aiController.compareItem
+);
+
+router.post(
   "/chat",
   body("message").trim().notEmpty().withMessage("message is required"),
   validate,

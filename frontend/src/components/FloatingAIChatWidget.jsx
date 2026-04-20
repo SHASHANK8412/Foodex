@@ -4,6 +4,7 @@ import {
   addUserChatMessage,
   appendAssistantChunk,
   completeAssistantMessage,
+  setChatSuggestions,
   startAssistantMessage,
 } from "../redux/slices/aiSlice";
 import { addToCart } from "../redux/slices/cartSlice";
@@ -13,7 +14,7 @@ import api from "../services/api";
 const FloatingAIChatWidget = () => {
   const dispatch = useDispatch();
   const { token } = useSelector((state) => state.auth);
-  const { chatMessages, chatLoading } = useSelector((state) => state.ai);
+  const { chatMessages, chatLoading, chatSuggestions } = useSelector((state) => state.ai);
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -29,6 +30,7 @@ const FloatingAIChatWidget = () => {
     setMessage("");
     dispatch(addUserChatMessage(userMessage));
     dispatch(startAssistantMessage());
+    dispatch(setChatSuggestions([]));
 
     try {
       const response = await api.post("/ai/chat", {
@@ -37,6 +39,7 @@ const FloatingAIChatWidget = () => {
 
       const payload = response.data?.data;
       dispatch(appendAssistantChunk(payload?.reply || "No response from AI."));
+      dispatch(setChatSuggestions(payload?.suggestions || []));
 
       const actions = payload?.actions || [];
       actions.forEach((action) => {
@@ -94,6 +97,34 @@ const FloatingAIChatWidget = () => {
                 {msg.content}
               </div>
             ))}
+
+            {!!chatSuggestions.length && (
+              <div className="space-y-2 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs dark:border-slate-700 dark:bg-slate-800/70">
+                <p className="font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300">
+                  Best options found
+                </p>
+                {chatSuggestions.slice(0, 4).map((option, index) => {
+                  const restaurantName = option.restaurantName || option.restaurant?.name || "Restaurant";
+                  const itemName = option.menuItemName || option.name || "Item";
+                  const price = option.price || 0;
+                  const rating = option.rating || 0;
+                  const reviewsCount = option.ratingsCount || 0;
+                  const reviewText = option.latestReview?.comment || "";
+
+                  return (
+                    <div key={`${restaurantName}-${itemName}-${index}`} className="rounded-xl border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-900">
+                      <p className="font-semibold text-slate-800 dark:text-slate-100">{itemName}</p>
+                      <p className="text-slate-600 dark:text-slate-300">
+                        {restaurantName} • Rs.{price} • {rating}★ ({reviewsCount})
+                      </p>
+                      {!!reviewText && (
+                        <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">"{reviewText.slice(0, 80)}{reviewText.length > 80 ? "..." : ""}"</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <form onSubmit={sendMessage} className="flex gap-2 border-t border-slate-200 p-3 dark:border-slate-700">

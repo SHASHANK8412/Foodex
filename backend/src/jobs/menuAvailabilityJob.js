@@ -18,20 +18,26 @@ const syncMenuAvailability = async () => {
   );
 
   await MenuItem.updateMany(
-    { availabilityWindow: { $in: ["breakfast", "lunch", "dinner"] } },
-    [
-      {
-        $set: {
-          isAvailable: {
-            $eq: ["$availabilityWindow", currentWindow],
-          },
-        },
+    {
+      availabilityWindow: {
+        $in: ["breakfast", "lunch", "dinner"],
+        $ne: currentWindow,
       },
-    ]
+    },
+    { $set: { isAvailable: false } }
+  );
+
+  await MenuItem.updateMany(
+    { availabilityWindow: currentWindow },
+    { $set: { isAvailable: true } }
   );
 };
 
 const startMenuAvailabilityCron = () => {
+  syncMenuAvailability().catch((error) => {
+    console.error("Initial menu availability sync failed:", error.message);
+  });
+
   cron.schedule("*/15 * * * *", async () => {
     try {
       await syncMenuAvailability();
@@ -39,6 +45,8 @@ const startMenuAvailabilityCron = () => {
       console.error("Menu availability cron failed:", error.message);
     }
   });
+
+  console.log("Menu availability cron started: every 15 minutes");
 };
 
 module.exports = {

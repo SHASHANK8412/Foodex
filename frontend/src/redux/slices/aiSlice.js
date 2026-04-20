@@ -9,6 +9,7 @@ const initialState = {
   },
   quickReorder: [],
   chatMessages: [],
+  chatSuggestions: [],
   loading: false,
   chatLoading: false,
   error: "",
@@ -55,6 +56,9 @@ const aiSlice = createSlice({
     completeAssistantMessage(state) {
       state.chatLoading = false;
     },
+    setChatSuggestions(state, action) {
+      state.chatSuggestions = action.payload || [];
+    },
     clearSemanticResults(state) {
       state.semanticResults = [];
     },
@@ -87,6 +91,7 @@ export const {
   startAssistantMessage,
   appendAssistantChunk,
   completeAssistantMessage,
+  setChatSuggestions,
   clearSemanticResults,
 } = aiSlice.actions;
 
