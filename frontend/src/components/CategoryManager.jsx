@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, X, Edit2, GripVertical, Loader } from 'lucide-react';
-import { Draggable, Droppable, DragDropContext } from 'react-beautiful-dnd';
+import { Draggable, Droppable, DragDropContext } from '@hello-pangea/dnd';
 
 const CategoryManager = ({
   categories = [],

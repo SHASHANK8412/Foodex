@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams } from 'react-router-dom';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { Toaster, toast } from 'sonner';
 import { Edit2, Trash2, ToggleRight, ToggleLeft, Plus, ChevronRight, Loader } from 'lucide-react';
 
