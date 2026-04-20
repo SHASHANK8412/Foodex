@@ -1,90 +1,164 @@
-import React, { useState } from "react";
-import { useSelector } from "react-redux";
-import { Navigate } from "react-router-dom";
-import { ROLES } from "../utils/constants";
-
-// Mock data for now
-const mockOrders = [
-  {
-    _id: "order1",
-    restaurant: { name: "Pizza Palace", location: { lat: 28.62, lng: 77.22 } },
-    deliveryAddress: { line1: "123, Connaught Place", location: { lat: 28.63, lng: 77.21 } },
-    status: "PREPARING",
-    totalAmount: 550,
-  },
-  {
-    _id: "order2",
-    restaurant: { name: "Burger Barn", location: { lat: 28.55, lng: 77.25 } },
-    deliveryAddress: { line1: "456, Hauz Khas", location: { lat: 28.54, lng: 77.21 } },
-    status: "OUT_FOR_DELIVERY",
-    totalAmount: 800,
-  },
-];
+import { useEffect, useMemo, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { Link } from "react-router-dom";
+import { fetchOrders, setActiveOrderFromSocket } from "../redux/slices/orderSlice";
+import { connectSocket, disconnectSocket } from "../services/socket";
 
 const DeliveryDashboardPage = () => {
-  const { user } = useSelector((state) => state.auth);
-  const [isAvailable, setIsAvailable] = useState(true);
-  const [orders, setOrders] = useState(mockOrders);
+  const dispatch = useDispatch();
+  const { orders, loading, error } = useSelector((state) => state.orders);
+  const { token } = useSelector((state) => state.auth);
+  const [notifications, setNotifications] = useState([]);
 
-  if (user?.role !== ROLES.DELIVERY_PARTNER) {
-    return <Navigate to="/" />;
-  }
+  const { activeOrders, deliveredOrders } = useMemo(() => {
+    const active = orders.filter((order) => order.status !== "delivered" && order.status !== "cancelled");
+    const delivered = orders.filter((order) => order.status === "delivered");
+    return { activeOrders: active, deliveredOrders: delivered };
+  }, [orders]);
 
-  const handleStatusUpdate = (orderId, newStatus) => {
-    // In a real app, this would dispatch an action to call the API
-    console.log(`Updating order ${orderId} to ${newStatus}`);
-    setOrders(
-      orders.map((o) => (o._id === orderId ? { ...o, status: newStatus } : o))
-    );
-  };
+  useEffect(() => {
+    dispatch(fetchOrders());
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (!token) {
+      return;
+    }
+
+    const socket = connectSocket(token);
+    if (!socket) {
+      return;
+    }
+
+    const onOrderUpdate = (payload) => {
+      if (!payload?.order?._id) {
+        return;
+      }
+
+      dispatch(setActiveOrderFromSocket(payload.order));
+
+      const message = payload?.message || "Order updated";
+      setNotifications((prev) => {
+        const next = [
+          {
+            id: Date.now() + Math.floor(Math.random() * 1000),
+            message,
+            createdAt: new Date().toISOString(),
+            orderId: payload.order._id,
+          },
+          ...prev,
+        ];
+        return next.slice(0, 10);
+      });
+    };
+
+    const onNotification = (payload) => {
+      const message = payload?.message || payload?.title || "Notification";
+      setNotifications((prev) => {
+        const next = [
+          {
+            id: Date.now() + Math.floor(Math.random() * 1000),
+            message,
+            createdAt: payload?.createdAt || new Date().toISOString(),
+            orderId: payload?.meta?.orderId,
+          },
+          ...prev,
+        ];
+        return next.slice(0, 10);
+      });
+    };
+
+    socket.on("order:update", onOrderUpdate);
+    socket.on("notification", onNotification);
+
+    return () => {
+      socket.off("order:update", onOrderUpdate);
+      socket.off("notification", onNotification);
+      disconnectSocket();
+    };
+  }, [token, dispatch]);
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Delivery Dashboard</h1>
-        <div className="flex items-center gap-4">
-          <span className="font-semibold">Availability:</span>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={isAvailable}
-              onChange={() => setIsAvailable(!isAvailable)}
-              className="sr-only peer"
-            />
-            <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-          </label>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <header>
+        <h1 className="text-3xl font-black tracking-tight text-slate-900">Delivery dashboard</h1>
+        <p className="text-sm text-slate-600">View your assigned orders and open tracking.</p>
+      </header>
 
-      {/* In a real app, a map view of orders would go here */}
+      {error && <p className="rounded-2xl bg-rose-50 p-4 text-sm font-semibold text-rose-700">{error}</p>}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {orders.map((order) => (
-          <div key={order._id} className="bg-white p-4 rounded-lg shadow-md">
-            <h3 className="font-bold text-lg">{order.restaurant.name}</h3>
-            <p className="text-sm text-gray-600">{order.deliveryAddress.line1}</p>
-            <p className="font-bold my-2">Status: <span className="text-blue-600">{order.status}</span></p>
-            <div className="flex gap-2 mt-4">
-              {order.status === "PREPARING" && (
-                <button
-                  onClick={() => handleStatusUpdate(order._id, "OUT_FOR_DELIVERY")}
-                  className="bg-blue-500 text-white px-3 py-1 rounded-md text-sm"
-                >
-                  Pick Up
-                </button>
-              )}
-              {order.status === "OUT_FOR_DELIVERY" && (
-                <button
-                  onClick={() => handleStatusUpdate(order._id, "DELIVERED")}
-                  className="bg-green-500 text-white px-3 py-1 rounded-md text-sm"
-                >
-                  Mark Delivered
-                </button>
-              )}
-            </div>
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-xl font-bold text-slate-900">Notifications</h2>
+        {notifications.length === 0 ? (
+          <p className="mt-3 text-sm text-slate-600">No new notifications.</p>
+        ) : (
+          <ul className="mt-4 space-y-2">
+            {notifications.map((note) => (
+              <li key={note.id} className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
+                <p className="font-semibold text-slate-900">{note.message}</p>
+                {note.orderId && <p className="mt-1 text-xs text-slate-500">Order {String(note.orderId).slice(-8)}</p>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-xl font-bold text-slate-900">Active deliveries</h2>
+        {loading ? (
+          <p className="mt-3 text-sm text-slate-600">Loading…</p>
+        ) : activeOrders.length === 0 ? (
+          <p className="mt-3 text-sm text-slate-600">No active deliveries right now.</p>
+        ) : (
+          <div className="mt-4 space-y-3">
+            {activeOrders.map((order) => (
+              <article key={order._id} className="rounded-2xl border border-slate-200 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-slate-900">Order {order._id.slice(-8)}</p>
+                  <p className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold uppercase">{order.status}</p>
+                </div>
+
+                <p className="mt-2 text-sm text-slate-600">Restaurant: {order.restaurant?.name || "—"}</p>
+                <p className="mt-1 text-sm text-slate-600">Total: ₹{Number(order.totalAmount || 0).toFixed(2)}</p>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Link
+                    to={`/orders/track?orderId=${order._id}`}
+                    className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-bold text-white hover:bg-slate-700"
+                  >
+                    Open tracking
+                  </Link>
+                </div>
+              </article>
+            ))}
           </div>
-        ))}
-      </div>
+        )}
+      </section>
+
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-xl font-bold text-slate-900">Delivered</h2>
+        {loading ? (
+          <p className="mt-3 text-sm text-slate-600">Loading…</p>
+        ) : deliveredOrders.length === 0 ? (
+          <p className="mt-3 text-sm text-slate-600">No delivered orders yet.</p>
+        ) : (
+          <div className="mt-4 space-y-3">
+            {deliveredOrders.map((order) => (
+              <article key={order._id} className="rounded-2xl border border-slate-200 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-slate-900">Order {order._id.slice(-8)}</p>
+                  <p className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold uppercase text-emerald-700">
+                    delivered
+                  </p>
+                </div>
+
+                <p className="mt-2 text-sm text-slate-600">Restaurant: {order.restaurant?.name || "—"}</p>
+                <p className="mt-1 text-sm text-slate-600">Total: ₹{Number(order.totalAmount || 0).toFixed(2)}</p>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 };

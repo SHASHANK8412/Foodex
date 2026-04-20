@@ -1,17 +1,20 @@
 import { useMemo, useState } from "react";
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { logout } from "../redux/slices/authSlice";
 import { setSearchQuery } from "../redux/slices/uiSlice";
 import DarkModeToggle from "./DarkModeToggle";
 
 const navClass = ({ isActive }) =>
-  "rounded-full px-3 py-2 text-sm font-medium transition " +
-  (isActive ? "bg-rose-500 text-white" : "text-slate-700 hover:bg-rose-100 hover:text-rose-700");
+  "rounded-full px-3 py-2 text-sm font-extrabold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300 dark:focus-visible:ring-orange-500/30 " +
+  (isActive
+    ? "bg-gradient-to-r from-rose-600 to-orange-500 text-white shadow-sm"
+    : "text-slate-700 hover:bg-orange-50/80 hover:text-orange-900 dark:text-slate-200 dark:hover:bg-slate-900/60 dark:hover:text-orange-200");
 
 const roleLabel = {
   admin: "Admin",
   delivery: "Delivery",
+  restaurant: "Restaurant",
   user: "User",
   owner: "Owner",
 };
@@ -19,6 +22,7 @@ const roleLabel = {
 const Navbar = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const [profileOpen, setProfileOpen] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(
     localStorage.getItem("foodex_selected_location") || "All Locations"
@@ -41,6 +45,22 @@ const Navbar = () => {
     return Array.from(set);
   }, [restaurants, user?.address?.city]);
 
+  const isDeliveryArea = location.pathname.startsWith("/delivery");
+  const isRestaurantArea = location.pathname.startsWith("/restaurant");
+
+  const isDeliveryUser = user?.role === "delivery";
+  const isRestaurantUser = user?.role === "restaurant";
+
+  const homeHref = isDeliveryUser
+    ? "/delivery"
+    : isRestaurantUser
+      ? "/restaurant"
+      : isDeliveryArea
+        ? "/delivery/login"
+        : isRestaurantArea
+          ? "/restaurant/login"
+          : "/";
+
   const handleLogout = () => {
     dispatch(logout());
     navigate("/");
@@ -52,76 +72,147 @@ const Navbar = () => {
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-orange-100 bg-white/80 backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
+    <header className="sticky top-0 z-40 border-b border-orange-100/70 bg-white/70 backdrop-blur dark:border-slate-800/80 dark:bg-slate-950/65">
       <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-        <Link to="/" className="flex items-center gap-2">
+        <Link to={homeHref} className="flex items-center gap-2">
           <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-rose-500 font-black text-white shadow-lg">
             F
           </span>
           <div>
             <p className="text-lg font-black leading-none tracking-tight text-slate-900 dark:text-slate-100">Foodex</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Delivering joy, fast</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Warm delivery, premium feel</p>
           </div>
         </Link>
 
         <nav className="hidden items-center gap-2 md:flex">
-          <NavLink to="/" className={navClass} end>
-            Home
-          </NavLink>
-          <NavLink to="/restaurants" className={navClass}>
-            Restaurants
-          </NavLink>
-          <NavLink to="/orders/track" className={navClass}>
-            Tracking
-          </NavLink>
-          {user && (
-            <NavLink to="/user-dashboard" className={navClass}>
-              Dashboard
+          {isDeliveryUser ? (
+            <>
+              <NavLink to="/delivery" className={navClass}>
+                Delivery
+              </NavLink>
+              <NavLink to="/orders/track" className={navClass}>
+                Tracking
+              </NavLink>
+            </>
+          ) : isRestaurantUser ? (
+            <NavLink to="/restaurant" className={navClass}>
+              Restaurant
             </NavLink>
-          )}
-          {user?.role === "admin" && (
-            <NavLink to="/admin" className={navClass}>
-              Admin
-            </NavLink>
+          ) : (
+            <>
+              <NavLink to="/" className={navClass} end>
+                Home
+              </NavLink>
+              <NavLink to="/restaurants" className={navClass}>
+                Restaurants
+              </NavLink>
+              <NavLink to="/orders/track" className={navClass}>
+                Tracking
+              </NavLink>
+              {user && (
+                <NavLink to="/user-dashboard" className={navClass}>
+                  Dashboard
+                </NavLink>
+              )}
+              {user?.role === "admin" && (
+                <NavLink to="/admin" className={navClass}>
+                  Admin
+                </NavLink>
+              )}
+              {user?.role === "owner" && (
+                <NavLink to="/restaurant-dashboard" className={navClass}>
+                  Owner
+                </NavLink>
+              )}
+            </>
           )}
         </nav>
 
-        <div className="hidden items-center lg:flex">
-          <input
-            value={searchQuery}
-            onChange={(event) => dispatch(setSearchQuery(event.target.value))}
-            placeholder="Search restaurants or cuisine"
-            className="w-64 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none ring-orange-400 focus:ring dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-          />
+        <div className="hidden items-center gap-2 lg:flex">
+          {!isDeliveryUser && !isRestaurantUser && (
+            <input
+              value={searchQuery}
+              onChange={(event) => dispatch(setSearchQuery(event.target.value))}
+              placeholder="Search restaurants, dishes, cuisines"
+              className="w-72 rounded-full border border-slate-200/80 bg-white/70 px-4 py-2 text-sm text-slate-700 outline-none ring-orange-400/40 backdrop-blur focus:ring-2 dark:border-slate-700/80 dark:bg-slate-950/45 dark:text-slate-100"
+            />
+          )}
         </div>
 
-        <div className="hidden md:block">
-          <select
-            value={selectedLocation}
-            onChange={(event) => handleLocationChange(event.target.value)}
-            className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-          >
-            {locationOptions.map((location) => (
-              <option key={location} value={location}>
-                {location}
-              </option>
-            ))}
-          </select>
-        </div>
+        {!isDeliveryUser && !isRestaurantUser && (
+          <div className="hidden md:block">
+            <select
+              value={selectedLocation}
+              onChange={(event) => handleLocationChange(event.target.value)}
+              className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            >
+              {locationOptions.map((location) => (
+                <option key={location} value={location}>
+                  {location}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="flex items-center gap-2">
           <DarkModeToggle />
-          <Link to="/cart" className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">
-            Cart ({itemCount})
-          </Link>
+          {!isDeliveryUser && !isRestaurantUser && (
+            <Link
+              to="/cart"
+              className="rounded-full bg-slate-900 px-4 py-2 text-sm font-extrabold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-800"
+            >
+              Cart ({itemCount})
+            </Link>
+          )}
           {!user ? (
             <>
-              <Link to="/login" className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-slate-500 dark:border-slate-700 dark:text-slate-200">
-                Login
-              </Link>
-              <Link to="/register" className="hidden rounded-full bg-rose-500 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-600 sm:inline-flex">
-                Register
-              </Link>
+              {isDeliveryArea ? (
+                <>
+                  <Link
+                    to="/delivery/login"
+                    className="rounded-full border border-slate-200/80 bg-white/60 px-4 py-2 text-sm font-extrabold text-slate-800 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white dark:border-slate-700/80 dark:bg-slate-950/45 dark:text-slate-100 dark:hover:border-slate-600"
+                  >
+                    Delivery login
+                  </Link>
+                  <Link
+                    to="/delivery/register"
+                    className="rounded-full bg-gradient-to-r from-rose-600 to-orange-500 px-4 py-2 text-sm font-extrabold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lift"
+                  >
+                    Delivery register
+                  </Link>
+                </>
+              ) : isRestaurantArea ? (
+                <>
+                  <Link
+                    to="/restaurant/login"
+                    className="rounded-full border border-slate-200/80 bg-white/60 px-4 py-2 text-sm font-extrabold text-slate-800 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white dark:border-slate-700/80 dark:bg-slate-950/45 dark:text-slate-100 dark:hover:border-slate-600"
+                  >
+                    Restaurant login
+                  </Link>
+                  <Link
+                    to="/restaurant/register"
+                    className="rounded-full bg-gradient-to-r from-rose-600 to-orange-500 px-4 py-2 text-sm font-extrabold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lift"
+                  >
+                    Restaurant register
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link
+                    to="/login"
+                    className="rounded-full border border-slate-200/80 bg-white/60 px-4 py-2 text-sm font-extrabold text-slate-800 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white dark:border-slate-700/80 dark:bg-slate-950/45 dark:text-slate-100 dark:hover:border-slate-600"
+                  >
+                    User login
+                  </Link>
+                  <Link
+                    to="/register"
+                    className="hidden rounded-full bg-gradient-to-r from-rose-600 to-orange-500 px-4 py-2 text-sm font-extrabold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lift sm:inline-flex"
+                  >
+                    Register
+                  </Link>
+                </>
+              )}
             </>
           ) : (
             <>
@@ -143,7 +234,17 @@ const Navbar = () => {
                 {profileOpen && (
                   <div className="absolute right-0 mt-2 w-48 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-900">
                     <Link
-                      to="/user-dashboard"
+                      to={
+                        user?.role === "delivery"
+                          ? "/delivery"
+                          : user?.role === "restaurant"
+                            ? "/restaurant"
+                            : user?.role === "owner"
+                              ? "/restaurant-dashboard"
+                              : user?.role === "admin"
+                                ? "/admin"
+                                : "/user-dashboard"
+                      }
                       onClick={() => setProfileOpen(false)}
                       className="block rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
                     >
@@ -166,6 +267,13 @@ const Navbar = () => {
                   </div>
                 )}
               </div>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="sm:hidden rounded-full border border-slate-200/80 bg-white/60 px-4 py-2 text-sm font-extrabold text-slate-800 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white dark:border-slate-700/80 dark:bg-slate-950/45 dark:text-slate-100 dark:hover:border-slate-600"
+              >
+                Logout
+              </button>
             </>
           )}
         </div>

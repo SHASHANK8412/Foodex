@@ -9,6 +9,7 @@ const useAuth = () => {
     isAuthenticated: Boolean(user && token),
     isAdmin: user?.role === "admin",
     isDelivery: user?.role === "delivery",
+    isRestaurant: user?.role === "restaurant",
   };
 };
 

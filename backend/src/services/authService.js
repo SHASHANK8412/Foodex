@@ -8,15 +8,20 @@ const { emailQueue } = require("../queues");
 
 const googleClient = new OAuth2Client();
 
+const REGISTERABLE_ROLES = new Set([ROLES.USER, ROLES.DELIVERY, ROLES.RESTAURANT]);
+
 const registerUser = async (payload) => {
   const existingUser = await User.findOne({ email: payload.email });
   if (existingUser) {
     throw new ApiError(StatusCodes.CONFLICT, "Email already registered");
   }
 
+  const requestedRole = typeof payload.role === "string" ? payload.role.toLowerCase() : undefined;
+  const role = requestedRole && REGISTERABLE_ROLES.has(requestedRole) ? requestedRole : ROLES.USER;
+
   const user = await User.create({
     ...payload,
-    role: ROLES.USER,
+    role,
   });
   const token = user.generateAuthToken();
 

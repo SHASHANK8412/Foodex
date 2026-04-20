@@ -54,6 +54,8 @@ const orderSlice = createSlice({
       const index = state.orders.findIndex((item) => item._id === incomingOrder._id);
       if (index >= 0) {
         state.orders[index] = mergedOrder;
+      } else {
+        state.orders.unshift(mergedOrder);
       }
     },
     clearOrderState(state) {

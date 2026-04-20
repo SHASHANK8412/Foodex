@@ -9,19 +9,32 @@ const { restaurantValidator, menuItemValidator } = require("../validators/restau
 const router = express.Router();
 
 router.get("/", restaurantController.listRestaurants);
+router.get("/mine", protect, authorize(ROLES.RESTAURANT), restaurantController.listMyRestaurants);
 router.get("/:restaurantId", restaurantController.getRestaurant);
 
-router.post("/", protect, authorize(ROLES.ADMIN), ...restaurantValidator, validate, restaurantController.createRestaurant);
-router.patch("/:restaurantId", protect, authorize(ROLES.ADMIN), restaurantController.updateRestaurant);
+router.post(
+  "/",
+  protect,
+  authorize(ROLES.ADMIN, ROLES.RESTAURANT),
+  ...restaurantValidator,
+  validate,
+  restaurantController.createRestaurant
+);
+router.patch("/:restaurantId", protect, authorize(ROLES.ADMIN, ROLES.RESTAURANT), restaurantController.updateRestaurant);
 
 router.post(
   "/:restaurantId/menu",
   protect,
-  authorize(ROLES.ADMIN),
+  authorize(ROLES.ADMIN, ROLES.RESTAURANT),
   ...menuItemValidator,
   validate,
   restaurantController.createMenuItem
 );
-router.patch("/menu/:menuItemId", protect, authorize(ROLES.ADMIN), restaurantController.updateMenuItem);
+router.patch(
+  "/menu/:menuItemId",
+  protect,
+  authorize(ROLES.ADMIN, ROLES.RESTAURANT),
+  restaurantController.updateMenuItem
+);
 
 module.exports = router;

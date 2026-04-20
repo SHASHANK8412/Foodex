@@ -6,7 +6,18 @@ const redisClient = require("../config/redis");
 const { setIO } = require("./socketManager");
 const Order = require("../models/Order");
 
+const ROLES = require("../constants/roles");
+
 const socketAllowedOrigins = env.clientOrigins;
+
+const isValidLatLng = (location) => {
+  if (!location) return false;
+  const lat = Number(location.lat);
+  const lng = Number(location.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return false;
+  return true;
+};
 
 const initializeSocket = (httpServer) => {
   const io = new Server(httpServer, {
@@ -103,30 +114,48 @@ const initializeSocket = (httpServer) => {
       }
     });
 
-    socket.on("delivery:location", ({ orderId, location }) => {
-      if (orderId && location) {
-        io.to(`order:${orderId}`).emit("delivery:location", {
-          orderId,
-          location,
-          deliveryPartnerId: socket.user.userId,
-          timestamp: new Date().toISOString(),
-        });
-      }
-    });
+    const handleDeliveryLocationUpdate = async ({ orderId, location }) => {
+      try {
+        if (!orderId || !isValidLatLng(location)) {
+          return;
+        }
 
-    socket.on("order:location:update", ({ orderId, location }) => {
-      if (orderId && location) {
+        if (socket.user?.role !== ROLES.DELIVERY) {
+          return;
+        }
+
+        const order = await Order.findById(orderId).select("deliveryPartner");
+        if (!order?.deliveryPartner) {
+          return;
+        }
+
+        if (String(order.deliveryPartner) !== String(socket.user.userId)) {
+          return;
+        }
+
+        await Order.findByIdAndUpdate(
+          orderId,
+          {
+            currentDeliveryLocation: { lat: Number(location.lat), lng: Number(location.lng) },
+            currentDeliveryLocationUpdatedAt: new Date(),
+          },
+          { new: false }
+        );
+
         io.to(`order:${orderId}`).emit("delivery:location", {
           orderId,
-          location,
+          location: { lat: Number(location.lat), lng: Number(location.lng) },
           deliveryPartnerId: socket.user.userId,
           timestamp: new Date().toISOString(),
         });
+      } catch (_error) {
+        // ignore invalid/unauthorized updates
       }
-    });
+    };
+
+    socket.on("delivery:location", handleDeliveryLocationUpdate);
+    socket.on("order:location:update", handleDeliveryLocationUpdate);
   });
-
-  setIO(io);
   return io;
 };
 

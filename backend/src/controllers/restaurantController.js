@@ -7,6 +7,11 @@ const createRestaurant = asyncHandler(async (req, res) => {
   res.status(StatusCodes.CREATED).json({ success: true, data: restaurant });
 });
 
+const listMyRestaurants = asyncHandler(async (req, res) => {
+  const restaurants = await restaurantService.listRestaurantsForOwner(req.user.userId);
+  res.status(StatusCodes.OK).json({ success: true, data: restaurants });
+});
+
 const listRestaurants = asyncHandler(async (_req, res) => {
   const restaurants = await restaurantService.listRestaurants();
   res.status(StatusCodes.OK).json({ success: true, data: restaurants });
@@ -18,22 +23,23 @@ const getRestaurant = asyncHandler(async (req, res) => {
 });
 
 const updateRestaurant = asyncHandler(async (req, res) => {
-  const restaurant = await restaurantService.updateRestaurant(req.params.restaurantId, req.body);
+  const restaurant = await restaurantService.updateRestaurant(req.params.restaurantId, req.body, req.user);
   res.status(StatusCodes.OK).json({ success: true, data: restaurant });
 });
 
 const createMenuItem = asyncHandler(async (req, res) => {
-  const menuItem = await restaurantService.createMenuItem(req.params.restaurantId, req.body);
+  const menuItem = await restaurantService.createMenuItem(req.params.restaurantId, req.body, req.user);
   res.status(StatusCodes.CREATED).json({ success: true, data: menuItem });
 });
 
 const updateMenuItem = asyncHandler(async (req, res) => {
-  const menuItem = await restaurantService.updateMenuItem(req.params.menuItemId, req.body);
+  const menuItem = await restaurantService.updateMenuItem(req.params.menuItemId, req.body, req.user);
   res.status(StatusCodes.OK).json({ success: true, data: menuItem });
 });
 
 module.exports = {
   createRestaurant,
+  listMyRestaurants,
   listRestaurants,
   getRestaurant,
   updateRestaurant,
