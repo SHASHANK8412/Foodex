@@ -4,6 +4,34 @@ const jwt = require("jsonwebtoken");
 const env = require("../config/env");
 const ROLES = require("../constants/roles");
 
+const loyaltySchema = new mongoose.Schema(
+  {
+    points: { type: Number, default: 0 },
+    level: {
+      type: String,
+      enum: ["Bronze", "Silver", "Gold", "Platinum"],
+      default: "Bronze",
+    },
+    badges: [{ type: mongoose.Schema.Types.ObjectId, ref: "Achievement" }],
+    streak: {
+      current: { type: Number, default: 0 },
+      lastOrderDate: { type: Date },
+    },
+  },
+  { _id: false }
+);
+
+const deliveryPartnerSchema = new mongoose.Schema(
+  {
+    isAvailable: { type: Boolean, default: false },
+    currentLocation: {
+      lat: Number,
+      lng: Number,
+    },
+  },
+  { _id: false }
+);
+
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
@@ -28,6 +56,13 @@ const userSchema = new mongoose.Schema(
       },
     },
     isActive: { type: Boolean, default: true },
+    aiProfile: {
+      preferredCuisines: [{ type: String }],
+      preferredTimeSlots: [{ type: Number }],
+      lastQuickReorderAt: Date,
+    },
+    loyalty: { type: loyaltySchema, default: () => ({}) },
+    deliveryPartnerProfile: { type: deliveryPartnerSchema },
   },
   { timestamps: true }
 );

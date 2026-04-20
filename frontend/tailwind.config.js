@@ -77,12 +77,17 @@ export default {
           "0%": { transform: "scale(0.98)", opacity: "0" },
           "100%": { transform: "scale(1)", opacity: "1" },
         },
+        slideup: {
+          from: { transform: "translateY(100%)" },
+          to: { transform: "translateY(0)" },
+        },
       },
       animation: {
         floaty: "floaty 6s ease-in-out infinite",
         rise: "rise 700ms cubic-bezier(0.16, 1, 0.3, 1) both",
         shimmer: "shimmer 6s ease-in-out infinite alternate",
         pop: "pop 260ms cubic-bezier(0.16, 1, 0.3, 1) both",
+        slideup: "slideup 0.3s ease-out",
       },
       backgroundImage: {
         "hero-sheen":

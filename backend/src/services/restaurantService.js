@@ -14,7 +14,11 @@ const assertRestaurantOwner = (restaurant, actorId) => {
 };
 
 const createRestaurant = async (payload, userId) => {
-  return Restaurant.create({ ...payload, createdBy: userId });
+  return Restaurant.create({
+    ...payload,
+    createdBy: userId,
+    ownerId: payload.ownerId || userId,
+  });
 };
 
 const listRestaurants = async () => {

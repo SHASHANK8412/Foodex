@@ -7,6 +7,7 @@ import RestaurantMenuPage from "./pages/RestaurantMenuPage";
 import CartPage from "./pages/CartPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import OrderTrackingPage from "./pages/OrderTrackingPage";
+import OrderConfirmationPage from "./pages/OrderConfirmationPage";
 import LoginPage from "./pages/LoginPage";
 import DeliveryLoginPage from "./pages/DeliveryLoginPage";
 import RestaurantLoginPage from "./pages/RestaurantLoginPage";
@@ -14,8 +15,14 @@ import RegisterPage from "./pages/RegisterPage";
 import DeliveryRegisterPage from "./pages/DeliveryRegisterPage";
 import RestaurantRegisterPage from "./pages/RestaurantRegisterPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
+import AdminAnalyticsPage from "./pages/AdminAnalyticsPage";
+import AdminPaymentsPage from "./pages/AdminPaymentsPage";
 import DeliveryDashboardPage from "./pages/DeliveryDashboardPage";
 import RestaurantDashboardPage from "./pages/RestaurantDashboardPage";
+import RestaurantPartnerDashboardPage from "./pages/RestaurantPartnerDashboardPage";
+import MenuDashboardPage from "./pages/MenuDashboardPage";
+import UserDashboardPage from "./pages/UserDashboardPage";
+import GroupOrderPage from "./pages/GroupOrderPage";
 import NotFoundPage from "./pages/NotFoundPage";
 
 const App = () => {
@@ -42,6 +49,30 @@ const App = () => {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="order-confirmation"
+          element={
+            <ProtectedRoute roles={["user", "admin"]}>
+              <OrderConfirmationPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="user-dashboard"
+          element={
+            <ProtectedRoute roles={["user", "admin"]}>
+              <UserDashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="group-order/:inviteCode"
+          element={
+            <ProtectedRoute roles={["user", "admin"]}>
+              <GroupOrderPage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="login" element={<LoginPage />} />
         <Route path="delivery/login" element={<DeliveryLoginPage />} />
         <Route path="restaurant/login" element={<RestaurantLoginPage />} />
@@ -60,7 +91,7 @@ const App = () => {
           path="restaurant"
           element={
             <ProtectedRoute roles={["restaurant"]} redirectTo="/restaurant/login">
-              <RestaurantDashboardPage />
+              <RestaurantPartnerDashboardPage />
             </ProtectedRoute>
           }
         />
@@ -69,6 +100,38 @@ const App = () => {
           element={
             <ProtectedRoute roles={["admin"]}>
               <AdminDashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="admin/analytics"
+          element={
+            <ProtectedRoute roles={["admin"]}>
+              <AdminAnalyticsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="admin/payments"
+          element={
+            <ProtectedRoute roles={["admin"]}>
+              <AdminPaymentsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="restaurant-dashboard"
+          element={
+            <ProtectedRoute roles={["owner", "admin"]}>
+              <RestaurantDashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="restaurant/:restaurantId/menu"
+          element={
+            <ProtectedRoute roles={["owner", "admin"]}>
+              <MenuDashboardPage />
             </ProtectedRoute>
           }
         />

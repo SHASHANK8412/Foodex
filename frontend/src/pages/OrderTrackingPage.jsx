@@ -84,6 +84,12 @@ const OrderTrackingPage = () => {
       }
     };
 
+    const onOrderSnapshot = (payload) => {
+      if (payload?.order) {
+        dispatch(setActiveOrderFromSocket(payload.order));
+      }
+    };
+
     const onDeliveryLocation = (payload) => {
       if (!payload?.orderId) return;
       if (!isValidLatLng(payload.location)) return;
@@ -95,10 +101,12 @@ const OrderTrackingPage = () => {
     };
 
     socket.on("order:update", onOrderUpdate);
+    socket.on("order:snapshot", onOrderSnapshot);
     socket.on("delivery:location", onDeliveryLocation);
 
     return () => {
       socket.off("order:update", onOrderUpdate);
+      socket.off("order:snapshot", onOrderSnapshot);
       socket.off("delivery:location", onDeliveryLocation);
       disconnectSocket();
       socketRef.current = null;

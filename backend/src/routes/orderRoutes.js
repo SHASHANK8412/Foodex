@@ -18,6 +18,7 @@ router.post("/razorpay/webhook", orderController.razorpayWebhook);
 router.use(protect);
 
 router.get("/", orderController.listOrders);
+router.get("/:orderId/payment-status", orderController.getPaymentDiagnostics);
 router.get("/:orderId", orderController.getOrder);
 router.post("/", ...createOrderValidator, validate, orderController.createOrder);
 router.post("/verify-payment", ...verifyPaymentValidator, validate, orderController.verifyPayment);

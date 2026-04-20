@@ -16,6 +16,7 @@ const cartSlice = createSlice({
   reducers: {
     addToCart(state, action) {
       const item = action.payload;
+      const quantityToAdd = Number(item.quantity || 1);
 
       if (state.items.length && state.items[0].restaurantId !== item.restaurantId) {
         state.items = [];
@@ -24,9 +25,9 @@ const cartSlice = createSlice({
       const existing = state.items.find((cartItem) => cartItem.menuItemId === item.menuItemId);
 
       if (existing) {
-        existing.quantity += 1;
+        existing.quantity += quantityToAdd;
       } else {
-        state.items.push({ ...item, quantity: 1 });
+        state.items.push({ ...item, quantity: Math.max(1, quantityToAdd) });
       }
 
       persistCart(state.items);

@@ -1,19 +1,28 @@
 import { useEffect } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchRestaurantById } from "../redux/slices/restaurantSlice";
 import { fetchDemandForecast } from "../redux/slices/analyticsSlice";
 import MenuItemCard from "../components/MenuItemCard";
+import SemanticSearchPanel from "../components/SemanticSearchPanel";
+import RecommendationCarousel from "../components/RecommendationCarousel";
+import { fetchAiRecommendations } from "../redux/slices/aiSlice";
+import { addToast } from "../redux/slices/uiSlice";
+import api from "../services/api";
 
 const RestaurantMenuPage = () => {
   const { restaurantId } = useParams();
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { selectedRestaurant, loading, error } = useSelector((state) => state.restaurants);
   const { demandForecast } = useSelector((state) => state.analytics);
+  const aiRecommendations = useSelector((state) => state.ai.recommendations);
+  const { isAuthenticated, user } = useSelector((state) => state.auth);
 
   useEffect(() => {
     dispatch(fetchRestaurantById(restaurantId));
     dispatch(fetchDemandForecast(restaurantId));
+    dispatch(fetchAiRecommendations(restaurantId));
   }, [dispatch, restaurantId]);
 
   if (loading) {
@@ -31,6 +40,21 @@ const RestaurantMenuPage = () => {
   const { restaurant, menu } = selectedRestaurant;
   const categories = Array.from(new Set((menu || []).map((item) => item.category).filter(Boolean)));
   const recommended = (menu || []).filter((item) => item.recommended).slice(0, 3);
+
+  const startGroupOrder = async () => {
+    try {
+      const response = await api.post("/group-orders", { restaurantId });
+      const code = response.data?.data?.inviteCode;
+      if (!code) {
+        throw new Error("Failed to create group order");
+      }
+
+      navigate(`/group-order/${code}`);
+      dispatch(addToast({ type: "success", message: "Group order created. Share your invite link." }));
+    } catch (groupError) {
+      dispatch(addToast({ type: "error", message: groupError.message || "Unable to start group order" }));
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -69,6 +93,10 @@ const RestaurantMenuPage = () => {
         </section>
       )}
 
+      <SemanticSearchPanel restaurantId={restaurantId} />
+
+      <RecommendationCarousel title="You may also like" items={aiRecommendations.mayLike} />
+
       <div className="space-y-3">
         {menu?.length ? (
           menu.map((item) => <MenuItemCard key={item._id} item={item} restaurantId={restaurantId} />)
@@ -80,6 +108,16 @@ const RestaurantMenuPage = () => {
       <Link to="/cart" className="inline-flex rounded-full bg-slate-900 px-5 py-3 text-sm font-bold text-white hover:bg-rose-600">
         Go to cart
       </Link>
+
+      {isAuthenticated && ["user", "admin"].includes(user?.role) && (
+        <button
+          type="button"
+          onClick={startGroupOrder}
+          className="ml-3 inline-flex rounded-full border border-slate-300 px-5 py-3 text-sm font-bold text-slate-700 hover:border-slate-500 dark:border-slate-700 dark:text-slate-100"
+        >
+          Start group order
+        </button>
+      )}
     </div>
   );
 };

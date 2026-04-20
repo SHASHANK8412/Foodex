@@ -1,15 +1,22 @@
 const { StatusCodes } = require("http-status-codes");
 const crypto = require("crypto");
+const env = require("../config/env");
 const Restaurant = require("../models/Restaurant");
 const MenuItem = require("../models/MenuItem");
 const Order = require("../models/Order");
+const Payment = require("../models/Payment");
 const { ORDER_STATUS, PAYMENT_STATUS } = require("../constants/order");
 const KAFKA_TOPICS = require("../constants/kafkaTopics");
 const ApiError = require("../utils/ApiError");
 const { createRazorpayOrder, verifySignature, verifyWebhookSignature } = require("./paymentService");
-const { emitOrderUpdate } = require("../sockets/socketManager");
+const { emitOrderUpdate, emitDeliveryLocation } = require("../sockets/socketManager");
 const { publishEvent } = require("../kafka");
+const { refreshRestaurantDemand } = require("./demandService");
+const loyaltyService = require("./loyaltyService");
+const { smsQueue, pushNotificationQueue, analyticsQueue } = require("../queues");
+const { publishOrderStatusUpdate } = require("../graphql/subscriptionBus");
 const { pushUserNotification } = require("./notificationService");
+const { autoAssignDeliveryPartner } = require("./deliveryAssignmentService");
 
 const assertDeliveryPartnerAssigned = (order, deliveryPartnerId) => {
   if (!order.deliveryPartner) {
@@ -23,6 +30,166 @@ const assertDeliveryPartnerAssigned = (order, deliveryPartnerId) => {
 
 const TAX_RATE = 0.05;
 const DELIVERY_FEE = 40;
+
+const processOrderEventFallback = async ({ eventType, orderId, userId }) => {
+  if (env.kafkaEnabled) {
+    return;
+  }
+
+  if (eventType === KAFKA_TOPICS.ORDER_CREATED) {
+    await pushUserNotification({
+      userId,
+      type: "order_created",
+      title: "Order placed",
+      message: `Your order #${orderId} has been placed successfully`,
+      meta: { orderId },
+    });
+
+    await autoAssignDeliveryPartner({
+      orderId,
+      source: "direct_fallback_order_created",
+    });
+  }
+
+  if (eventType === KAFKA_TOPICS.ORDER_PAID) {
+    await pushUserNotification({
+      userId,
+      type: "payment_success",
+      title: "Payment successful",
+      message: `Payment confirmed for order #${orderId}`,
+      meta: { orderId },
+    });
+
+    await autoAssignDeliveryPartner({
+      orderId,
+      source: "direct_fallback_order_paid",
+    });
+  }
+};
+
+const upsertPaymentTransaction = async ({
+  order,
+  status,
+  razorpayOrderId,
+  razorpayPaymentId,
+  metadata,
+}) => {
+  try {
+    await Payment.findOneAndUpdate(
+      { order: order._id },
+      {
+        user: order.user,
+        restaurant: order.restaurant,
+        order: order._id,
+        provider: "razorpay",
+        amount: order.totalAmount,
+        currency: "INR",
+        status,
+        razorpayOrderId: razorpayOrderId || order.razorpayOrderId,
+        razorpayPaymentId: razorpayPaymentId || order.razorpayPaymentId,
+        ...(status === PAYMENT_STATUS.PAID ? { paidAt: new Date() } : {}),
+        lastEventAt: new Date(),
+        metadata,
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+  } catch (_error) {
+    // Payment tracking should not block order flow.
+  }
+};
+
+const geocodeWithMaptiler = async (deliveryAddress) => {
+  if (!env.maptilerApiKey || !deliveryAddress) {
+    return null;
+  }
+
+  const queryCandidates = [
+    [deliveryAddress.line1, deliveryAddress.city, deliveryAddress.state, deliveryAddress.postalCode]
+      .filter(Boolean)
+      .join(", "),
+    [deliveryAddress.postalCode, deliveryAddress.city, deliveryAddress.state]
+      .filter(Boolean)
+      .join(", "),
+    [deliveryAddress.city, deliveryAddress.state]
+      .filter(Boolean)
+      .join(", "),
+  ].filter(Boolean);
+
+  if (!queryCandidates.length) {
+    return null;
+  }
+
+  try {
+    for (const query of queryCandidates) {
+      const url = `https://api.maptiler.com/geocoding/${encodeURIComponent(query)}.json?key=${env.maptilerApiKey}&limit=1`;
+      const response = await fetch(url);
+      if (!response.ok) {
+        continue;
+      }
+
+      const data = await response.json();
+      const center = data?.features?.[0]?.center;
+      if (!Array.isArray(center) || center.length < 2) {
+        continue;
+      }
+
+      return {
+        lng: Number(center[0]),
+        lat: Number(center[1]),
+      };
+    }
+
+    return null;
+  } catch (_error) {
+    return null;
+  }
+};
+
+const hydrateDeliveryAddressLocation = async (deliveryAddress) => {
+  if (!deliveryAddress) {
+    return deliveryAddress;
+  }
+
+  if (deliveryAddress.location?.lat !== undefined && deliveryAddress.location?.lng !== undefined) {
+    return deliveryAddress;
+  }
+
+  const geocodedLocation = await geocodeWithMaptiler(deliveryAddress);
+  if (!geocodedLocation) {
+    return deliveryAddress;
+  }
+
+  return {
+    ...deliveryAddress,
+    location: geocodedLocation,
+  };
+};
+
+const ensureOrderDeliveryLocation = async (order) => {
+  if (!order?.deliveryAddress) {
+    return order;
+  }
+
+  if (
+    order.deliveryAddress.location?.lat !== undefined &&
+    order.deliveryAddress.location?.lng !== undefined
+  ) {
+    return order;
+  }
+
+  const hydratedDeliveryAddress = await hydrateDeliveryAddressLocation(order.deliveryAddress);
+  if (
+    !hydratedDeliveryAddress?.location ||
+    hydratedDeliveryAddress.location.lat === undefined ||
+    hydratedDeliveryAddress.location.lng === undefined
+  ) {
+    return order;
+  }
+
+  order.deliveryAddress = hydratedDeliveryAddress;
+  await order.save();
+  return order;
+};
 
 const createOrder = async ({ userId, restaurantId, items, deliveryAddress }) => {
   const restaurant = await Restaurant.findById(restaurantId);
@@ -53,11 +220,13 @@ const createOrder = async ({ userId, restaurantId, items, deliveryAddress }) => 
   const taxAmount = Number((subtotal * TAX_RATE).toFixed(2));
   const totalAmount = Number((subtotal + taxAmount + DELIVERY_FEE).toFixed(2));
 
+  const normalizedDeliveryAddress = await hydrateDeliveryAddressLocation(deliveryAddress);
+
   const draftOrder = await Order.create({
     user: userId,
     restaurant: restaurantId,
     items: orderItems,
-    deliveryAddress,
+    deliveryAddress: normalizedDeliveryAddress,
     subtotal,
     taxAmount,
     deliveryFee: DELIVERY_FEE,
@@ -83,8 +252,16 @@ const createOrder = async ({ userId, restaurantId, items, deliveryAddress }) => 
   draftOrder.razorpayOrderId = razorpayOrder.id;
   await draftOrder.save();
 
-  const populated = await Order.findById(draftOrder._id).populate("restaurant", "name");
+  await upsertPaymentTransaction({
+    order: draftOrder,
+    status: PAYMENT_STATUS.PENDING,
+    razorpayOrderId: razorpayOrder.id,
+    metadata: { source: "checkout_create" },
+  });
+
+  const populated = await Order.findById(draftOrder._id).populate("restaurant", "name address.location");
   emitOrderUpdate(populated, "Order placed and payment initiated");
+  await refreshRestaurantDemand(restaurantId);
 
   await publishEvent(KAFKA_TOPICS.ORDER_CREATED, {
     orderId: String(populated._id),
@@ -94,10 +271,16 @@ const createOrder = async ({ userId, restaurantId, items, deliveryAddress }) => 
     paymentStatus: PAYMENT_STATUS.PENDING,
   });
 
+  await processOrderEventFallback({
+    eventType: KAFKA_TOPICS.ORDER_CREATED,
+    orderId: String(populated._id),
+    userId: String(userId),
+  });
+
   return {
     order: populated,
     payment: {
-      keyId: process.env.RAZORPAY_KEY_ID || "",
+      keyId: env.razorpayKeyId || "",
       razorpayOrderId: razorpayOrder.id,
       amount: razorpayOrder.amount,
       currency: razorpayOrder.currency,
@@ -112,6 +295,22 @@ const verifyOrderPayment = async ({ orderId, razorpayOrderId, razorpayPaymentId,
     throw new ApiError(StatusCodes.NOT_FOUND, "Order not found");
   }
 
+  if (order.razorpayOrderId && order.razorpayOrderId !== razorpayOrderId) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Razorpay order id does not match this order");
+  }
+
+  if (order.paymentStatus === PAYMENT_STATUS.PAID) {
+    const alreadySamePayment =
+      order.razorpayPaymentId === razorpayPaymentId &&
+      order.razorpayOrderId === razorpayOrderId;
+
+    if (!alreadySamePayment) {
+      throw new ApiError(StatusCodes.CONFLICT, "Order payment is already completed");
+    }
+
+    return Order.findById(order._id).populate("restaurant", "name address.location").populate("user", "name email");
+  }
+
   const isValid = razorpayOrderId.startsWith("mock_order_")
     ? true
     : verifySignature({
@@ -123,6 +322,13 @@ const verifyOrderPayment = async ({ orderId, razorpayOrderId, razorpayPaymentId,
   if (!isValid) {
     order.paymentStatus = PAYMENT_STATUS.FAILED;
     await order.save();
+    await upsertPaymentTransaction({
+      order,
+      status: PAYMENT_STATUS.FAILED,
+      razorpayOrderId,
+      razorpayPaymentId,
+      metadata: { source: "checkout_verify", reason: "signature_mismatch" },
+    });
     throw new ApiError(StatusCodes.BAD_REQUEST, "Payment verification failed");
   }
 
@@ -138,8 +344,18 @@ const verifyOrderPayment = async ({ orderId, razorpayOrderId, razorpayPaymentId,
 
   await order.save();
 
-  const populated = await Order.findById(order._id).populate("restaurant", "name").populate("user", "name email");
+  await upsertPaymentTransaction({
+    order,
+    status: PAYMENT_STATUS.PAID,
+    razorpayOrderId,
+    razorpayPaymentId,
+    metadata: { source: "checkout_verify" },
+  });
+
+  const populated = await Order.findById(order._id).populate("restaurant", "name address.location").populate("user", "name email");
   emitOrderUpdate(populated, "Payment successful");
+  await publishOrderStatusUpdate(populated);
+  await refreshRestaurantDemand(populated.restaurant?._id || populated.restaurant);
 
   await publishEvent(KAFKA_TOPICS.ORDER_PAID, {
     orderId: String(populated._id),
@@ -147,6 +363,12 @@ const verifyOrderPayment = async ({ orderId, razorpayOrderId, razorpayPaymentId,
     restaurantId: String(populated.restaurant?._id || populated.restaurant),
     totalAmount: populated.totalAmount,
     paymentStatus: PAYMENT_STATUS.PAID,
+  });
+
+  await processOrderEventFallback({
+    eventType: KAFKA_TOPICS.ORDER_PAID,
+    orderId: String(populated._id),
+    userId: String(populated.user?._id || populated.user),
   });
 
   return populated;
@@ -172,12 +394,54 @@ const updateOrderStatus = async ({ orderId, status, actorId, actorRole, note, lo
 
   await order.save();
 
+  // Award loyalty points on completion
+  if (status === ORDER_STATUS.DELIVERED) {
+    await loyaltyService.addPointsForOrder(order.user, order.totalAmount, new Date());
+  }
+
   const populated = await Order.findById(order._id)
-    .populate("restaurant", "name")
-    .populate("user", "name email")
+    .populate("restaurant", "name address.location")
+    .populate("user", "name email phone") // Eagerly load phone for SMS
     .populate("deliveryPartner", "name phone");
 
   emitOrderUpdate(populated, note || "Order status changed");
+  await publishOrderStatusUpdate(populated);
+
+  // --- Enqueue Notifications and Analytics ---
+  analyticsQueue.add({
+    event: "order_status_updated",
+    data: { orderId, newStatus: status, actorId },
+  });
+
+  if (populated.user?.phone) {
+    smsQueue.add({
+      to: populated.user.phone,
+      body: `Foodex Update: Your order #${order.shortId} is now ${status}. ${note || ""}`,
+    });
+  }
+
+  // We would need to store user device tokens to send push notifications
+  // For now, this is a placeholder.
+  // if (populated.user?.deviceToken) {
+  //   pushNotificationQueue.add({
+  //     token: populated.user.deviceToken,
+  //     title: `Order #${order.shortId} Update`,
+  //     body: `Your order is now ${status}.`,
+  //     data: { orderId },
+  //   });
+  // }
+  // --- End Notifications ---
+
+  if (location?.lat !== undefined && location?.lng !== undefined) {
+    emitDeliveryLocation({
+      orderId: String(populated._id),
+      location,
+      deliveryPartnerId: populated.deliveryPartner?._id || populated.deliveryPartner,
+    });
+  }
+
+  await refreshRestaurantDemand(populated.restaurant?._id || populated.restaurant);
+
   return populated;
 };
 
@@ -201,7 +465,7 @@ const assignDeliveryPartner = async ({ orderId, deliveryPartnerId, actorId }) =>
   await order.save();
 
   const populated = await Order.findById(order._id)
-    .populate("restaurant", "name")
+    .populate("restaurant", "name address.location")
     .populate("user", "name email")
     .populate("deliveryPartner", "name phone");
 
@@ -216,6 +480,8 @@ const assignDeliveryPartner = async ({ orderId, deliveryPartnerId, actorId }) =>
       orderId: String(populated._id),
     },
   });
+
+  await refreshRestaurantDemand(populated.restaurant?._id || populated.restaurant);
   return populated;
 };
 
@@ -237,15 +503,18 @@ const getOrdersForUser = async (user) => {
     query.restaurant = { $in: restaurantIds };
   }
 
-  return Order.find(query)
-    .populate("restaurant", "name")
+  const orders = await Order.find(query)
+    .populate("restaurant", "name address.location")
     .populate("deliveryPartner", "name phone")
     .sort({ createdAt: -1 });
+
+  await Promise.all(orders.map((order) => ensureOrderDeliveryLocation(order)));
+  return orders;
 };
 
 const getOrderById = async (orderId, user) => {
-  const order = await Order.findById(orderId)
-    .populate("restaurant", "name")
+  let order = await Order.findById(orderId)
+    .populate("restaurant", "name address.location")
     .populate("user", "name email")
     .populate("deliveryPartner", "name phone");
 
@@ -263,10 +532,76 @@ const getOrderById = async (orderId, user) => {
   }
 
   if (user.role === "admin" || isOwner || isDeliveryPartner || isRestaurantOwner) {
+    order = await ensureOrderDeliveryLocation(order);
     return order;
   }
 
   throw new ApiError(StatusCodes.FORBIDDEN, "Not authorized to view this order");
+};
+
+const getPaymentDiagnostics = async ({ orderId, user }) => {
+  const order = await getOrderById(orderId, user);
+
+  const paymentEvent = [...(order.trackingEvents || [])]
+    .reverse()
+    .find((event) => typeof event.note === "string" && event.note.toLowerCase().includes("payment confirmed"));
+
+  const paymentFailedEvent = [...(order.trackingEvents || [])]
+    .reverse()
+    .find((event) => typeof event.note === "string" && event.note.toLowerCase().includes("payment failed"));
+
+  const verificationSource = paymentEvent?.note?.toLowerCase().includes("webhook")
+    ? "webhook"
+    : paymentEvent
+      ? "checkout_verify_api"
+      : null;
+
+  const isMockOrder = String(order.razorpayOrderId || "").startsWith("mock_order_");
+  const canRetryPayment = [PAYMENT_STATUS.PENDING, PAYMENT_STATUS.FAILED].includes(order.paymentStatus);
+
+  let nextAction = "none";
+  if (order.paymentStatus === PAYMENT_STATUS.PENDING) {
+    nextAction = "complete_payment";
+  } else if (order.paymentStatus === PAYMENT_STATUS.FAILED) {
+    nextAction = "retry_payment";
+  }
+
+  return {
+    orderId: String(order._id),
+    shortId: order.shortId,
+    orderStatus: order.status,
+    paymentStatus: order.paymentStatus,
+    amount: {
+      subtotal: order.subtotal,
+      taxAmount: order.taxAmount,
+      deliveryFee: order.deliveryFee,
+      totalAmount: order.totalAmount,
+      currency: "INR",
+    },
+    gateway: {
+      provider: "razorpay",
+      isMockOrder,
+      razorpayOrderId: order.razorpayOrderId || null,
+      razorpayPaymentId: order.razorpayPaymentId || null,
+      signatureStored: Boolean(order.razorpaySignature),
+      verificationSource,
+      verifiedAt: paymentEvent?.timestamp || null,
+      failedAt: paymentFailedEvent?.timestamp || null,
+    },
+    timeline: (order.trackingEvents || []).map((event) => ({
+      status: event.status,
+      note: event.note || "",
+      timestamp: event.timestamp,
+      updatedBy: event.updatedBy || null,
+    })),
+    canRetryPayment,
+    nextAction,
+    recommendations: {
+      verifyOrderOnBackend: true,
+      useWebhookForReconciliation: true,
+      retryAllowed: canRetryPayment,
+    },
+  };
 };
 
 const processRazorpayWebhook = async ({ rawBody, signature }) => {
@@ -313,12 +648,21 @@ const processRazorpayWebhook = async ({ rawBody, signature }) => {
 
       await order.save();
 
+      await upsertPaymentTransaction({
+        order,
+        status: PAYMENT_STATUS.PAID,
+        razorpayOrderId: entity.order_id,
+        razorpayPaymentId: entity.id,
+        metadata: { source: "webhook", event },
+      });
+
       const populated = await Order.findById(order._id)
-        .populate("restaurant", "name")
+        .populate("restaurant", "name address.location")
         .populate("user", "name email")
         .populate("deliveryPartner", "name phone");
 
       emitOrderUpdate(populated, "Payment confirmed (webhook)");
+      await refreshRestaurantDemand(populated.restaurant?._id || populated.restaurant);
 
       await publishEvent(KAFKA_TOPICS.ORDER_PAID, {
         orderId: String(populated._id),
@@ -326,6 +670,12 @@ const processRazorpayWebhook = async ({ rawBody, signature }) => {
         restaurantId: String(populated.restaurant?._id || populated.restaurant),
         totalAmount: populated.totalAmount,
         paymentStatus: PAYMENT_STATUS.PAID,
+      });
+
+      await processOrderEventFallback({
+        eventType: KAFKA_TOPICS.ORDER_PAID,
+        orderId: String(populated._id),
+        userId: String(populated.user?._id || populated.user),
       });
     }
 
@@ -340,12 +690,21 @@ const processRazorpayWebhook = async ({ rawBody, signature }) => {
     });
     await order.save();
 
+    await upsertPaymentTransaction({
+      order,
+      status: PAYMENT_STATUS.FAILED,
+      razorpayOrderId: entity.order_id,
+      razorpayPaymentId: entity.id,
+      metadata: { source: "webhook", event },
+    });
+
     const populated = await Order.findById(order._id)
-      .populate("restaurant", "name")
+      .populate("restaurant", "name address.location")
       .populate("user", "name email")
       .populate("deliveryPartner", "name phone");
 
     emitOrderUpdate(populated, "Payment failed");
+    await refreshRestaurantDemand(populated.restaurant?._id || populated.restaurant);
     return { processed: true, event, orderId: String(order._id) };
   }
 
@@ -359,5 +718,6 @@ module.exports = {
   assignDeliveryPartner,
   getOrdersForUser,
   getOrderById,
+  getPaymentDiagnostics,
   processRazorpayWebhook,
 };

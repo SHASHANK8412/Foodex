@@ -37,12 +37,47 @@ export const openRazorpayCheckout = async ({
       order_id: orderId,
       name: "Foodex",
       description: "Food order payment",
+      image: "https://razorpay.com/assets/razorpay-logo.svg",
       prefill: {
         name: customer?.name || "",
         email: customer?.email || "",
         contact: customer?.phone || "",
       },
       notes,
+      method: {
+        upi: true,
+        card: true,
+        netbanking: true,
+        wallet: true,
+      },
+      config: {
+        display: {
+          blocks: {
+            upi: {
+              name: "Pay via UPI",
+              instruments: [
+                { method: "upi", flows: ["collect", "intent"] },
+              ],
+            },
+            card: {
+              name: "Pay via Card",
+              instruments: [{ method: "card" }],
+            },
+            netbanking: {
+              name: "Netbanking",
+              instruments: [{ method: "netbanking" }],
+            },
+            wallet: {
+              name: "Wallet",
+              instruments: [{ method: "wallet" }],
+            },
+          },
+          sequence: ["block.upi", "block.card", "block.netbanking", "block.wallet"],
+          preferences: {
+            show_default_blocks: false,
+          },
+        },
+      },
       handler: (response) => {
         resolve(response);
       },

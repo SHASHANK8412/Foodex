@@ -17,8 +17,26 @@ const restaurantSchema = new mongoose.Schema(
     },
     contactPhone: { type: String, trim: true },
     imageUrl: { type: String, trim: true },
+    rating: { type: Number, default: 4.2, min: 0, max: 5 },
+    ratingsCount: { type: Number, default: 0, min: 0 },
     isOpen: { type: Boolean, default: true },
+    avgPrepMinutes: { type: Number, default: 22 },
+    activeOrders: { type: Number, default: 0 },
+    demandLevel: { type: String, enum: ["low", "medium", "high"], default: "low" },
+    estimatedWaitMinutes: { type: Number, default: 20 },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    ownerId: { type: mongoose.Schema.Types.ObjectId, ref: "User", index: true },
+    featured: { type: Boolean, default: false },
+    promotions: [
+      {
+        title: { type: String, trim: true },
+        code: { type: String, trim: true },
+        discountPercent: { type: Number, min: 0, max: 100 },
+        startsAt: Date,
+        endsAt: Date,
+        active: { type: Boolean, default: true },
+      },
+    ],
   },
   { timestamps: true }
 );

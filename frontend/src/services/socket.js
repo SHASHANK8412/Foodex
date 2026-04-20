@@ -15,6 +15,10 @@ export const connectSocket = (token) => {
 
   socket = io(socketBaseUrl, {
     autoConnect: true,
+    path: "/socket.io",
+    transports: ["polling"],
+    upgrade: false,
+    withCredentials: true,
     auth: {
       token,
     },
@@ -29,3 +33,5 @@ export const disconnectSocket = () => {
     socket = null;
   }
 };
+
+export const getSocket = () => socket;

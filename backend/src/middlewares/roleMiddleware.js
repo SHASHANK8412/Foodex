@@ -1,16 +1,22 @@
 const { StatusCodes } = require("http-status-codes");
 const ApiError = require("../utils/ApiError");
 
-const authorize = (...roles) => (req, _res, next) => {
-  if (!req.user) {
-    return next(new ApiError(StatusCodes.UNAUTHORIZED, "Unauthorized"));
-  }
+const authorize = (...allowedRoles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return next(new ApiError(StatusCodes.UNAUTHORIZED, "Authentication required. Please log in."));
+    }
 
-  if (!roles.includes(req.user.role)) {
-    return next(new ApiError(StatusCodes.FORBIDDEN, "Insufficient permissions"));
-  }
+    const userRoles = req.user.roles || [req.user.role];
+    
+    const hasPermission = userRoles.some(role => allowedRoles.includes(role));
 
-  next();
+    if (!hasPermission) {
+      return next(new ApiError(StatusCodes.FORBIDDEN, "You do not have sufficient permissions to perform this action."));
+    }
+
+    next();
+  };
 };
 
 module.exports = {

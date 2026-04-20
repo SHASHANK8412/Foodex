@@ -110,7 +110,7 @@ const CheckoutPage = () => {
     }
 
     dispatch(clearCart());
-    navigate("/orders/track?orderId=" + order._id);
+    navigate("/order-confirmation?orderId=" + order._id);
   };
 
   if (!items.length) {
@@ -128,7 +128,7 @@ const CheckoutPage = () => {
           value={address.line1}
           onChange={(event) => setAddress((prev) => ({ ...prev, line1: event.target.value }))}
           placeholder="Address line"
-          className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none ring-orange-400 focus:ring"
+          className="w-full rounded-xl border border-slate-400 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 placeholder:text-slate-600 outline-none ring-orange-400 focus:ring"
         />
         <div className="grid gap-3 sm:grid-cols-3">
           <input
@@ -136,21 +136,21 @@ const CheckoutPage = () => {
             value={address.city}
             onChange={(event) => setAddress((prev) => ({ ...prev, city: event.target.value }))}
             placeholder="City"
-            className="rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none ring-orange-400 focus:ring"
+            className="rounded-xl border border-slate-400 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 placeholder:text-slate-600 outline-none ring-orange-400 focus:ring"
           />
           <input
             required
             value={address.state}
             onChange={(event) => setAddress((prev) => ({ ...prev, state: event.target.value }))}
             placeholder="State"
-            className="rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none ring-orange-400 focus:ring"
+            className="rounded-xl border border-slate-400 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 placeholder:text-slate-600 outline-none ring-orange-400 focus:ring"
           />
           <input
             required
             value={address.postalCode}
             onChange={(event) => setAddress((prev) => ({ ...prev, postalCode: event.target.value }))}
             placeholder="Postal code"
-            className="rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none ring-orange-400 focus:ring"
+            className="rounded-xl border border-slate-400 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 placeholder:text-slate-600 outline-none ring-orange-400 focus:ring"
           />
         </div>
 

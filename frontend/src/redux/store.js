@@ -8,6 +8,9 @@ import analyticsReducer from "./slices/analyticsSlice";
 import themeReducer from "./slices/themeSlice";
 import uiReducer from "./slices/uiSlice";
 import wishlistReducer from "./slices/wishlistSlice";
+import aiReducer from "./slices/aiSlice";
+import menuReducer from "./slices/menuSlice";
+import partnerReducer from "./slices/partnerSlice";
 
 const store = configureStore({
   reducer: {
@@ -20,6 +23,9 @@ const store = configureStore({
     theme: themeReducer,
     ui: uiReducer,
     wishlist: wishlistReducer,
+    ai: aiReducer,
+    menu: menuReducer,
+    partner: partnerReducer,
   },
 });
 

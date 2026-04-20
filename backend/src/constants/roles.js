@@ -3,6 +3,7 @@ const ROLES = {
   ADMIN: "admin",
   DELIVERY: "delivery",
   RESTAURANT: "restaurant",
+  OWNER: "owner",
 };
 
 module.exports = ROLES;
