@@ -14,6 +14,8 @@ const menuItemSchema = new mongoose.Schema(
     price: { type: Number, required: true, min: 0 },
     imageUrl: { type: String, trim: true },
     isVeg: { type: Boolean, default: false },
+    recommended: { type: Boolean, default: false },
+    isTodaySpecial: { type: Boolean, default: false },
     isAvailable: { type: Boolean, default: true },
   },
   { timestamps: true }

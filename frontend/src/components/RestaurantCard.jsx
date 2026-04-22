@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { toggleFavoriteRestaurant } from "../redux/slices/wishlistSlice";
 import { addToast } from "../redux/slices/uiSlice";
+import { FALLBACK_RESTAURANT_IMAGE, FALLBACK_RESTAURANT_IMAGE_REMOTE, resolveImageUrl } from "../utils/imageUrl";
 
 const RestaurantCard = ({ restaurant }) => {
   const dispatch = useDispatch();
@@ -11,9 +12,7 @@ const RestaurantCard = ({ restaurant }) => {
   const rating = restaurant.rating ?? 4.2;
   const deliveryTime = restaurant.deliveryTime ?? "25-35 min";
   const tags = restaurant.cuisine?.slice(0, 3) || ["Popular", "Fast", "Fresh"];
-  const imageUrl =
-    restaurant.image ||
-    `https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=900&q=80`;
+  const imageUrl = resolveImageUrl(restaurant.imageUrl || restaurant.image) || FALLBACK_RESTAURANT_IMAGE_REMOTE;
 
   const toggleFavorite = () => {
     dispatch(toggleFavoriteRestaurant(restaurant._id));
@@ -28,7 +27,22 @@ const RestaurantCard = ({ restaurant }) => {
   return (
     <article className="group overflow-hidden rounded-3xl border border-orange-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900">
       <div className="relative h-44 overflow-hidden">
-        <img src={imageUrl} alt={restaurant.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+        <img
+          src={imageUrl}
+          alt={restaurant.name}
+          className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+          loading="lazy"
+          onError={(event) => {
+            const img = event.currentTarget;
+            if (img.dataset.fallbackStage === "remote") {
+              img.src = FALLBACK_RESTAURANT_IMAGE;
+              return;
+            }
+
+            img.dataset.fallbackStage = "remote";
+            img.src = FALLBACK_RESTAURANT_IMAGE_REMOTE;
+          }}
+        />
         <button
           type="button"
           onClick={toggleFavorite}

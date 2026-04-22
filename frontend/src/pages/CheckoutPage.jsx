@@ -15,7 +15,16 @@ const CheckoutPage = () => {
   const { loading, error } = useSelector((state) => state.orders);
   const { deliveryEstimate } = useSelector((state) => state.analytics);
 
-  const [address, setAddress] = useState({ line1: "", city: "", state: "", postalCode: "" });
+  const savedAddress = user?.address || null;
+  const hasSavedAddress = Boolean(savedAddress?.line1 && savedAddress?.city && savedAddress?.state && savedAddress?.postalCode);
+
+  const [isEditingAddress, setIsEditingAddress] = useState(!hasSavedAddress);
+  const [address, setAddress] = useState(() => ({
+    line1: savedAddress?.line1 || "",
+    city: savedAddress?.city || "",
+    state: savedAddress?.state || "",
+    postalCode: savedAddress?.postalCode || "",
+  }));
   const [paymentError, setPaymentError] = useState("");
 
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -123,36 +132,78 @@ const CheckoutPage = () => {
         <h1 className="text-3xl font-black tracking-tight text-slate-900">Checkout</h1>
         <p className="text-sm text-slate-600">Enter delivery details and place your order.</p>
 
-        <input
-          required
-          value={address.line1}
-          onChange={(event) => setAddress((prev) => ({ ...prev, line1: event.target.value }))}
-          placeholder="Address line"
-          className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none ring-orange-400 focus:ring"
-        />
-        <div className="grid gap-3 sm:grid-cols-3">
-          <input
-            required
-            value={address.city}
-            onChange={(event) => setAddress((prev) => ({ ...prev, city: event.target.value }))}
-            placeholder="City"
-            className="rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none ring-orange-400 focus:ring"
-          />
-          <input
-            required
-            value={address.state}
-            onChange={(event) => setAddress((prev) => ({ ...prev, state: event.target.value }))}
-            placeholder="State"
-            className="rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none ring-orange-400 focus:ring"
-          />
-          <input
-            required
-            value={address.postalCode}
-            onChange={(event) => setAddress((prev) => ({ ...prev, postalCode: event.target.value }))}
-            placeholder="Postal code"
-            className="rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none ring-orange-400 focus:ring"
-          />
-        </div>
+        {hasSavedAddress && !isEditingAddress && (
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-slate-500">Delivering to</p>
+                <p className="mt-1 text-sm font-bold text-slate-900">{savedAddress.line1}</p>
+                <p className="text-sm text-slate-600">
+                  {savedAddress.city}, {savedAddress.state} {savedAddress.postalCode}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditingAddress(true)}
+                className="shrink-0 rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-extrabold text-slate-800 hover:bg-slate-100"
+              >
+                Change
+              </button>
+            </div>
+          </div>
+        )}
+
+        {(!hasSavedAddress || isEditingAddress) && (
+          <>
+            <input
+              required
+              value={address.line1}
+              onChange={(event) => setAddress((prev) => ({ ...prev, line1: event.target.value }))}
+              placeholder="Address line"
+              className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none ring-orange-400 focus:ring"
+            />
+            <div className="grid gap-3 sm:grid-cols-3">
+              <input
+                required
+                value={address.city}
+                onChange={(event) => setAddress((prev) => ({ ...prev, city: event.target.value }))}
+                placeholder="City"
+                className="rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none ring-orange-400 focus:ring"
+              />
+              <input
+                required
+                value={address.state}
+                onChange={(event) => setAddress((prev) => ({ ...prev, state: event.target.value }))}
+                placeholder="State"
+                className="rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none ring-orange-400 focus:ring"
+              />
+              <input
+                required
+                value={address.postalCode}
+                onChange={(event) => setAddress((prev) => ({ ...prev, postalCode: event.target.value }))}
+                placeholder="Postal code"
+                className="rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none ring-orange-400 focus:ring"
+              />
+            </div>
+            {hasSavedAddress && (
+              <button
+                type="button"
+                onClick={() => {
+                  setAddress({
+                    line1: savedAddress.line1 || "",
+                    city: savedAddress.city || "",
+                    state: savedAddress.state || "",
+                    postalCode: savedAddress.postalCode || "",
+                  });
+                  setIsEditingAddress(false);
+                }}
+                className="inline-flex w-fit rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-extrabold text-slate-800 hover:bg-slate-100"
+              >
+                Use saved address
+              </button>
+            )}
+          </>
+        )}
 
         {(error || paymentError) && (
           <p className="rounded-xl bg-rose-50 p-3 text-sm font-semibold text-rose-700">{paymentError || error}</p>

@@ -1,44 +1,25 @@
+import { useEffect, useMemo, useState } from "react";
 import LandingSection from "./LandingSection";
 import Reveal from "../Reveal";
+import { Link } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import api from "../../services/api";
+import { fetchRestaurants } from "../../redux/slices/restaurantSlice";
 
-const dishes = [
-  {
-    name: "Saffron Butter Chicken",
-    note: "Velvety, aromatic, indulgent",
-    price: "from ₹329",
-    accent: "from-roast-500/25 via-cream-50 to-gold-200/25",
-  },
-  {
-    name: "Truffle Mushroom Pizza",
-    note: "Crisp base, luxe finish",
-    price: "from ₹399",
-    accent: "from-slate-200/55 via-cream-50 to-amber-100/45",
-  },
-  {
-    name: "Spicy Ramen Bowl",
-    note: "Deep broth, clean heat",
-    price: "from ₹289",
-    accent: "from-spice-300/25 via-cream-50 to-sky-100/55",
-  },
-  {
-    name: "Citrus Avocado Salad",
-    note: "Fresh crunch, bright taste",
-    price: "from ₹249",
-    accent: "from-leaf-500/18 via-cream-50 to-emerald-100/55",
-  },
-  {
-    name: "Roasted Orange Tacos",
-    note: "Smoky, bold, addictive",
-    price: "from ₹269",
-    accent: "from-roast-400/22 via-cream-50 to-spice-100/40",
-  },
-  {
-    name: "Soft Gold Cheesecake",
-    note: "Silky bite, sweet glow",
-    price: "from ₹219",
-    accent: "from-gold-200/35 via-cream-50 to-amber-100/55",
-  },
+const ACCENTS = [
+  "from-roast-500/25 via-cream-50 to-gold-200/25",
+  "from-slate-200/55 via-cream-50 to-amber-100/45",
+  "from-spice-300/25 via-cream-50 to-sky-100/55",
+  "from-leaf-500/18 via-cream-50 to-emerald-100/55",
+  "from-roast-400/22 via-cream-50 to-spice-100/40",
+  "from-gold-200/35 via-cream-50 to-amber-100/55",
 ];
+
+const formatPrice = (value) => {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return "";
+  return `₹${num}`;
+};
 
 const DishCard = ({ dish }) => {
   return (
@@ -50,10 +31,14 @@ const DishCard = ({ dish }) => {
         <p className="text-sm text-slate-600 dark:text-slate-300">{dish.note}</p>
         <div className="flex items-center justify-between">
           <span className="text-sm font-extrabold text-slate-900 dark:text-slate-50">{dish.price}</span>
-          <span className="inline-flex items-center gap-2 text-xs font-extrabold text-slate-900/80 dark:text-slate-50/80">
+          <Link
+            to={"/restaurants/" + dish.restaurantId}
+            className="inline-flex items-center gap-2 text-xs font-extrabold text-slate-900/80 transition hover:text-rose-600 dark:text-slate-50/80"
+            aria-label={`View ${dish.restaurantName} menu`}
+          >
             View
             <span className="transition-transform group-hover:translate-x-0.5">→</span>
-          </span>
+          </Link>
         </div>
       </div>
     </article>
@@ -61,6 +46,74 @@ const DishCard = ({ dish }) => {
 };
 
 const BestSellingDishes = () => {
+  const dispatch = useDispatch();
+  const { restaurants } = useSelector((state) => state.restaurants);
+  const [dishes, setDishes] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const curatedRestaurants = useMemo(() => {
+    if (!restaurants?.length) return [];
+    return [...restaurants].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0)).slice(0, 6);
+  }, [restaurants]);
+
+  useEffect(() => {
+    if (!restaurants?.length) {
+      dispatch(fetchRestaurants());
+    }
+  }, [dispatch, restaurants?.length]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadSignatureDishes = async () => {
+      if (!curatedRestaurants.length) return;
+
+      setLoading(true);
+
+      try {
+        const collected = [];
+
+        for (const restaurant of curatedRestaurants) {
+          if (collected.length >= 6) break;
+
+          const response = await api.get("/restaurants/" + restaurant._id);
+          const menu = response.data?.data?.menu || [];
+          const available = (menu || []).filter((item) => item?.isAvailable !== false);
+          if (!available.length) continue;
+
+          const specials = available.filter((item) => item?.isTodaySpecial);
+          const preferred = available.filter((item) => item?.recommended);
+          const source = specials.length ? specials : preferred.length ? preferred : available;
+
+          for (const item of source.slice(0, 2)) {
+            if (collected.length >= 6) break;
+            collected.push({
+              id: item._id,
+              restaurantId: restaurant._id,
+              restaurantName: restaurant.name || "Restaurant",
+              name: item.name || "Signature dish",
+              note: item.isTodaySpecial ? "Today’s special" : item.description || item.category || `From ${restaurant.name || "your city"}`,
+              price: formatPrice(item.price) || "",
+              accent: ACCENTS[collected.length % ACCENTS.length],
+            });
+          }
+        }
+
+        if (!cancelled) setDishes(collected);
+      } catch {
+        if (!cancelled) setDishes([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    loadSignatureDishes();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [curatedRestaurants]);
+
   return (
     <LandingSection
       id="dishes"
@@ -69,11 +122,23 @@ const BestSellingDishes = () => {
       subtitle="These are the kinds of dishes people screenshot, then order again."
     >
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {dishes.map((dish, idx) => (
-          <Reveal key={dish.name} delayMs={60 + idx * 50}>
-            <DishCard dish={dish} />
-          </Reveal>
-        ))}
+        {loading &&
+          Array.from({ length: 6 }).map((_, idx) => (
+            <Reveal key={idx} delayMs={60 + idx * 50}>
+              <div className="h-[208px] animate-pulse rounded-[1.75rem] border border-orange-100/70 bg-white/60 dark:border-slate-800/70 dark:bg-slate-950/35" />
+            </Reveal>
+          ))}
+
+        {!loading &&
+          dishes.map((dish, idx) => (
+            <Reveal key={dish.id || dish.name} delayMs={60 + idx * 50}>
+              <DishCard dish={dish} />
+            </Reveal>
+          ))}
+
+        {!loading && !dishes.length && (
+          <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">No signature dishes available yet.</p>
+        )}
       </div>
     </LandingSection>
   );

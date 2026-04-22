@@ -1,6 +1,6 @@
 import LandingSection from "./LandingSection";
 import Reveal from "../Reveal";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { setSearchQuery } from "../../redux/slices/uiSlice";
 
@@ -66,7 +66,6 @@ const cuisines = [
 const FeaturedCuisines = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const location = useSelector((state) => state.ui.location) || "";
 
   return (
     <LandingSection
@@ -84,7 +83,6 @@ const FeaturedCuisines = () => {
                 dispatch(setSearchQuery(cuisine.name));
                 const params = new URLSearchParams();
                 params.set("q", cuisine.name);
-                if (location.trim()) params.set("loc", location.trim());
                 navigate(`/restaurants?${params.toString()}`);
               }}
               className={[

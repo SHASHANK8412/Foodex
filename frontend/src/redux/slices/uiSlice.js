@@ -2,7 +2,6 @@ import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
   searchQuery: "",
-  location: "",
   toasts: [],
 };
 
@@ -12,9 +11,6 @@ const uiSlice = createSlice({
   reducers: {
     setSearchQuery(state, action) {
       state.searchQuery = action.payload;
-    },
-    setLocation(state, action) {
-      state.location = action.payload;
     },
     addToast(state, action) {
       const id = Date.now() + Math.floor(Math.random() * 1000);
@@ -30,6 +26,6 @@ const uiSlice = createSlice({
   },
 });
 
-export const { setSearchQuery, setLocation, addToast, removeToast } = uiSlice.actions;
+export const { setSearchQuery, addToast, removeToast } = uiSlice.actions;
 
 export default uiSlice.reducer;

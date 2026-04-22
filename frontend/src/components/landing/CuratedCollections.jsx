@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
-import { useSelector } from "react-redux";
 import LandingSection from "./LandingSection";
 import Reveal from "../Reveal";
 
@@ -70,8 +69,6 @@ const buildRestaurantsUrl = (paramsObject) => {
 };
 
 const CuratedCollections = () => {
-  const location = useSelector((state) => state.ui.location) || "";
-
   const rails = useMemo(
     () => [
       {
@@ -79,7 +76,7 @@ const CuratedCollections = () => {
         title: "Late Night",
         subtitle: "Comfort picks, zero effort",
         icon: iconMoon,
-        to: buildRestaurantsUrl({ loc: location, sort: "fast_delivery" }),
+        to: buildRestaurantsUrl({ sort: "fast_delivery" }),
         accent:
           "from-slate-200/70 via-cream-50 to-sky-100 dark:from-slate-900/50 dark:via-slate-950/30 dark:to-sky-500/10",
       },
@@ -88,7 +85,7 @@ const CuratedCollections = () => {
         title: "Healthy & Light",
         subtitle: "Fresh, clean, satisfying",
         icon: iconLeaf,
-        to: buildRestaurantsUrl({ loc: location, cuisine: "Healthy" }),
+        to: buildRestaurantsUrl({ cuisine: "Healthy" }),
         accent:
           "from-leaf-500/18 via-cream-50 to-emerald-100 dark:from-emerald-500/10 dark:via-slate-950/30 dark:to-emerald-500/10",
       },
@@ -97,7 +94,7 @@ const CuratedCollections = () => {
         title: "Desserts",
         subtitle: "Sweet finish, fast delivery",
         icon: iconDessert,
-        to: buildRestaurantsUrl({ loc: location, cuisine: "Desserts" }),
+        to: buildRestaurantsUrl({ cuisine: "Desserts" }),
         accent:
           "from-rose-200/28 via-cream-50 to-amber-100 dark:from-rose-500/10 dark:via-slate-950/30 dark:to-amber-500/10",
       },
@@ -106,7 +103,7 @@ const CuratedCollections = () => {
         title: "Fast Delivery",
         subtitle: "15–25 minutes energy",
         icon: iconBolt,
-        to: buildRestaurantsUrl({ loc: location, sort: "fast_delivery" }),
+        to: buildRestaurantsUrl({ sort: "fast_delivery" }),
         accent:
           "from-sky-200/30 via-cream-50 to-saffron-100 dark:from-sky-500/10 dark:via-slate-950/30 dark:to-saffron-500/10",
       },
@@ -115,7 +112,7 @@ const CuratedCollections = () => {
         title: "Top Rated",
         subtitle: "4.5+ favourites",
         icon: iconStar,
-        to: buildRestaurantsUrl({ loc: location, sort: "top_rated" }),
+        to: buildRestaurantsUrl({ sort: "top_rated" }),
         accent:
           "from-gold-200/40 via-cream-50 to-orange-100 dark:from-amber-500/12 dark:via-slate-950/30 dark:to-orange-500/10",
       },
@@ -124,12 +121,12 @@ const CuratedCollections = () => {
         title: "Global Cuisines",
         subtitle: "Explore what you’re craving",
         icon: iconGlobe,
-        to: buildRestaurantsUrl({ loc: location }),
+        to: buildRestaurantsUrl({}),
         accent:
           "from-roast-500/18 via-cream-50 to-spice-200/30 dark:from-orange-500/10 dark:via-slate-950/30 dark:to-rose-500/10",
       },
     ],
-    [location]
+    []
   );
 
   return (

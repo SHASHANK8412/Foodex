@@ -5,6 +5,7 @@ import LandingSection from "./LandingSection";
 import Reveal from "../Reveal";
 import { toggleFavoriteRestaurant } from "../../redux/slices/wishlistSlice";
 import { addToast } from "../../redux/slices/uiSlice";
+import { FALLBACK_RESTAURANT_IMAGE, FALLBACK_RESTAURANT_IMAGE_REMOTE, resolveImageUrl } from "../../utils/imageUrl";
 
 const initials = (name = "") =>
   name
@@ -23,7 +24,7 @@ const PremiumRestaurantCard = ({ restaurant }) => {
   const deliveryTime = restaurant.deliveryTime ?? "20-30 min";
   const tags = restaurant.cuisine?.slice(0, 3) || ["Top rated", "Fast", "Fresh"];
 
-  const imageUrl = restaurant.image || "";
+  const imageUrl = resolveImageUrl(restaurant.imageUrl || restaurant.image) || "";
 
   const toggle = () => {
     dispatch(toggleFavoriteRestaurant(restaurant._id));
@@ -39,6 +40,16 @@ const PremiumRestaurantCard = ({ restaurant }) => {
             alt={restaurant.name}
             className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
             loading="lazy"
+            onError={(event) => {
+              const img = event.currentTarget;
+              if (img.dataset.fallbackStage === "remote") {
+                img.src = FALLBACK_RESTAURANT_IMAGE;
+                return;
+              }
+
+              img.dataset.fallbackStage = "remote";
+              img.src = FALLBACK_RESTAURANT_IMAGE_REMOTE;
+            }}
           />
         ) : (
           <div className="h-full w-full bg-[radial-gradient(circle_at_30%_20%,rgba(250,204,21,0.22),transparent_55%),radial-gradient(circle_at_85%_30%,rgba(244,63,94,0.22),transparent_58%),radial-gradient(circle_at_55%_90%,rgba(249,115,22,0.18),transparent_60%),linear-gradient(180deg,rgba(255,255,255,0.8),rgba(255,255,255,0.55))] dark:bg-[radial-gradient(circle_at_30%_20%,rgba(250,204,21,0.10),transparent_55%),radial-gradient(circle_at_85%_30%,rgba(244,63,94,0.14),transparent_58%),radial-gradient(circle_at_55%_90%,rgba(249,115,22,0.10),transparent_60%),linear-gradient(180deg,rgba(2,6,23,0.35),rgba(2,6,23,0.20))]" />

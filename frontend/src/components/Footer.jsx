@@ -5,8 +5,8 @@ const Footer = () => {
   const location = useLocation();
   const { user } = useSelector((state) => state.auth);
 
-  const isDeliveryArea = location.pathname.startsWith("/delivery");
-  const isRestaurantArea = location.pathname.startsWith("/restaurant");
+  const isDeliveryArea = location.pathname === "/delivery" || location.pathname.startsWith("/delivery/");
+  const isRestaurantArea = location.pathname === "/restaurant" || location.pathname.startsWith("/restaurant/");
 
   const dashboardHref = user?.role === "delivery" ? "/delivery" : user?.role === "restaurant" ? "/restaurant" : "/";
 

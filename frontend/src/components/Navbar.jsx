@@ -25,8 +25,8 @@ const Navbar = () => {
   const itemCount = useSelector((state) => state.cart.items.length);
   const searchQuery = useSelector((state) => state.ui.searchQuery);
 
-  const isDeliveryArea = location.pathname.startsWith("/delivery");
-  const isRestaurantArea = location.pathname.startsWith("/restaurant");
+  const isDeliveryArea = location.pathname === "/delivery" || location.pathname.startsWith("/delivery/");
+  const isRestaurantArea = location.pathname === "/restaurant" || location.pathname.startsWith("/restaurant/");
 
   const isDeliveryUser = user?.role === "delivery";
   const isRestaurantUser = user?.role === "restaurant";
@@ -163,18 +163,6 @@ const Navbar = () => {
                     className="rounded-full border border-slate-200/80 bg-white/60 px-4 py-2 text-sm font-extrabold text-slate-800 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white dark:border-slate-700/80 dark:bg-slate-950/45 dark:text-slate-100 dark:hover:border-slate-600"
                   >
                     User login
-                  </Link>
-                  <Link
-                    to="/restaurant/login"
-                    className="hidden rounded-full border border-slate-200/80 bg-white/60 px-4 py-2 text-sm font-extrabold text-slate-800 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white dark:border-slate-700/80 dark:bg-slate-950/45 dark:text-slate-100 dark:hover:border-slate-600 lg:inline-flex"
-                  >
-                    Restaurant login
-                  </Link>
-                  <Link
-                    to="/delivery/login"
-                    className="hidden rounded-full border border-slate-200/80 bg-white/60 px-4 py-2 text-sm font-extrabold text-slate-800 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white dark:border-slate-700/80 dark:bg-slate-950/45 dark:text-slate-100 dark:hover:border-slate-600 lg:inline-flex"
-                  >
-                    Delivery login
                   </Link>
                   <Link to="/register" className="hidden rounded-full bg-gradient-to-r from-rose-600 to-orange-500 px-4 py-2 text-sm font-extrabold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lift sm:inline-flex">
                     Register

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { setLocation, setSearchQuery } from "../../redux/slices/uiSlice";
+import { setSearchQuery } from "../../redux/slices/uiSlice";
 import RadialActionMenu from "../RadialActionMenu";
 import Reveal from "../Reveal";
 
@@ -83,9 +83,7 @@ const HeroSection = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const globalQuery = useSelector((state) => state.ui.searchQuery);
-  const globalLocation = useSelector((state) => state.ui.location);
   const [query, setQuery] = useState(globalQuery || "");
-  const [location, setLocationValue] = useState(globalLocation || "");
 
   const chips = useMemo(
     () => [
@@ -99,11 +97,9 @@ const HeroSection = () => {
   const handleSubmit = (event) => {
     event.preventDefault();
     dispatch(setSearchQuery(query));
-    dispatch(setLocation(location));
 
     const params = new URLSearchParams();
     if (query.trim()) params.set("q", query.trim());
-    if (location.trim()) params.set("loc", location.trim());
     const qs = params.toString();
     navigate(qs ? `/restaurants?${qs}` : "/restaurants");
   };
@@ -136,25 +132,7 @@ const HeroSection = () => {
           </Reveal>
 
           <Reveal delayMs={170}>
-            <form onSubmit={handleSubmit} className="grid gap-3 sm:grid-cols-[0.9fr,1.6fr,auto] sm:items-center">
-              <label className="sr-only" htmlFor="home-location">
-                Delivery location
-              </label>
-              <div className="premium-surface !rounded-full !border-slate-200/80 !bg-white/70 px-4 py-3 shadow-sm dark:!border-slate-700/80 dark:!bg-slate-950/45">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-black text-slate-700 dark:text-slate-200">Deliver to</span>
-                  <input
-                    id="home-location"
-                    value={location}
-                    onChange={(e) => setLocationValue(e.target.value)}
-                    onBlur={() => dispatch(setLocation(location))}
-                    className="w-full bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400 dark:text-slate-50 dark:placeholder:text-slate-500"
-                    placeholder="City / Area"
-                    autoComplete="address-level2"
-                  />
-                </div>
-              </div>
-
+            <form onSubmit={handleSubmit} className="grid gap-3 sm:grid-cols-[1.6fr,auto] sm:items-center">
               <label className="sr-only" htmlFor="home-search">
                 Search restaurants, dishes, cuisines
               </label>

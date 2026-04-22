@@ -15,7 +15,16 @@ const RoleRegisterPage = ({ title, subtitle, role, loginTo }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { loading, error, user } = useSelector((state) => state.auth);
-  const [form, setForm] = useState({ name: "", email: "", phone: "", password: "" });
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    password: "",
+    addressLine1: "",
+    city: "",
+    state: "",
+    postalCode: "",
+  });
 
   useEffect(() => {
     dispatch(clearAuthError());
@@ -32,7 +41,25 @@ const RoleRegisterPage = ({ title, subtitle, role, loginTo }) => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    await dispatch(registerUser({ ...form, role }));
+
+    const payload = {
+      name: form.name,
+      email: form.email,
+      phone: form.phone,
+      password: form.password,
+      role,
+    };
+
+    if (role === "user") {
+      payload.address = {
+        line1: form.addressLine1,
+        city: form.city,
+        state: form.state,
+        postalCode: form.postalCode,
+      };
+    }
+
+    await dispatch(registerUser(payload));
   };
 
   return (
@@ -70,6 +97,44 @@ const RoleRegisterPage = ({ title, subtitle, role, loginTo }) => {
           onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))}
           className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none ring-orange-400 focus:ring"
         />
+
+        {role === "user" && (
+          <>
+            <div className="pt-2">
+              <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-slate-500">Address</p>
+            </div>
+            <input
+              required
+              placeholder="Address line"
+              value={form.addressLine1}
+              onChange={(event) => setForm((prev) => ({ ...prev, addressLine1: event.target.value }))}
+              className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none ring-orange-400 focus:ring"
+            />
+            <div className="grid gap-3 sm:grid-cols-3">
+              <input
+                required
+                placeholder="City"
+                value={form.city}
+                onChange={(event) => setForm((prev) => ({ ...prev, city: event.target.value }))}
+                className="rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none ring-orange-400 focus:ring"
+              />
+              <input
+                required
+                placeholder="State"
+                value={form.state}
+                onChange={(event) => setForm((prev) => ({ ...prev, state: event.target.value }))}
+                className="rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none ring-orange-400 focus:ring"
+              />
+              <input
+                required
+                placeholder="Postal code"
+                value={form.postalCode}
+                onChange={(event) => setForm((prev) => ({ ...prev, postalCode: event.target.value }))}
+                className="rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none ring-orange-400 focus:ring"
+              />
+            </div>
+          </>
+        )}
 
         {error && <p className="rounded-xl bg-rose-50 p-3 text-sm font-semibold text-rose-700">{error}</p>}
 

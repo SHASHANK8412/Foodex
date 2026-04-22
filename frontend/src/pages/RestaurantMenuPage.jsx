@@ -29,8 +29,11 @@ const RestaurantMenuPage = () => {
   }
 
   const { restaurant, menu } = selectedRestaurant;
-  const categories = Array.from(new Set((menu || []).map((item) => item.category).filter(Boolean)));
-  const recommended = (menu || []).filter((item) => item.recommended).slice(0, 3);
+  const menuItems = menu || [];
+  const categories = Array.from(new Set(menuItems.map((item) => item.category).filter(Boolean)));
+  const todaySpecials = menuItems.filter((item) => item?.isTodaySpecial);
+  const recommended = menuItems.filter((item) => item?.recommended).slice(0, 3);
+  const remainingMenuItems = menuItems.filter((item) => !item?.isTodaySpecial);
 
   return (
     <div className="space-y-6">
@@ -69,9 +72,21 @@ const RestaurantMenuPage = () => {
         </section>
       )}
 
+      {!!todaySpecials.length && (
+        <section className="rounded-3xl border border-rose-100 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+          <h2 className="text-lg font-black text-slate-900 dark:text-slate-100">Today’s specials</h2>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">Limited picks for today.</p>
+          <div className="mt-4 space-y-3">
+            {todaySpecials.map((item) => (
+              <MenuItemCard key={item._id} item={item} restaurantId={restaurantId} />
+            ))}
+          </div>
+        </section>
+      )}
+
       <div className="space-y-3">
-        {menu?.length ? (
-          menu.map((item) => <MenuItemCard key={item._id} item={item} restaurantId={restaurantId} />)
+        {remainingMenuItems.length ? (
+          remainingMenuItems.map((item) => <MenuItemCard key={item._id} item={item} restaurantId={restaurantId} />)
         ) : (
           <p className="rounded-2xl bg-white p-6 text-sm text-slate-600 dark:bg-slate-900 dark:text-slate-300">No menu items available right now.</p>
         )}

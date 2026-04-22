@@ -32,6 +32,7 @@ const registerUser = async (payload) => {
       email: user.email,
       role: user.role,
       phone: user.phone,
+      address: user.address,
     },
   };
 };
@@ -61,6 +62,7 @@ const loginUser = async ({ email, password }) => {
       email: user.email,
       role: user.role,
       phone: user.phone,
+      address: user.address,
     },
   };
 };
@@ -106,6 +108,7 @@ const loginWithGoogle = async ({ idToken }) => {
       email: user.email,
       role: user.role,
       phone: user.phone,
+      address: user.address,
     },
   };
 };
