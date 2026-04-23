@@ -7,6 +7,7 @@ const DeliveryLoginPage = () => {
       subtitle="Login to manage your assigned deliveries."
       allowedRoles={["delivery"]}
       loginPathHint="/delivery/login"
+      showGoogle
       showRegisterLink
       registerTo="/delivery/register"
       showRoleLinks={false}

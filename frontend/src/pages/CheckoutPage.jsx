@@ -72,50 +72,34 @@ const CheckoutPage = () => {
     const order = result.payload.order;
     const payment = result.payload.payment;
 
-    if (payment.isMock) {
+    try {
+      const response = await openRazorpayCheckout({
+        key: payment.keyId,
+        amount: payment.amount,
+        currency: payment.currency,
+        orderId: payment.razorpayOrderId,
+        customer: user,
+        notes: {
+          appOrderId: order._id,
+        },
+      });
+
       const verifyAction = await dispatch(
         verifyOrderPayment({
           orderId: order._id,
-          razorpayOrderId: payment.razorpayOrderId,
-          razorpayPaymentId: "mock_payment",
-          razorpaySignature: "mock_signature",
+          razorpayOrderId: response.razorpay_order_id,
+          razorpayPaymentId: response.razorpay_payment_id,
+          razorpaySignature: response.razorpay_signature,
         })
       );
 
       if (!verifyAction.payload) {
-        setPaymentError("Payment verification failed in mock mode.");
+        setPaymentError("Payment verification failed.");
         return;
       }
-    } else {
-      try {
-        const response = await openRazorpayCheckout({
-          key: payment.keyId,
-          amount: payment.amount,
-          currency: payment.currency,
-          orderId: payment.razorpayOrderId,
-          customer: user,
-          notes: {
-            appOrderId: order._id,
-          },
-        });
-
-        const verifyAction = await dispatch(
-          verifyOrderPayment({
-            orderId: order._id,
-            razorpayOrderId: response.razorpay_order_id,
-            razorpayPaymentId: response.razorpay_payment_id,
-            razorpaySignature: response.razorpay_signature,
-          })
-        );
-
-        if (!verifyAction.payload) {
-          setPaymentError("Payment verification failed.");
-          return;
-        }
-      } catch (checkoutError) {
-        setPaymentError(checkoutError.message || "Payment was not completed.");
-        return;
-      }
+    } catch (checkoutError) {
+      setPaymentError(checkoutError.message || "Payment was not completed.");
+      return;
     }
 
     dispatch(clearCart());

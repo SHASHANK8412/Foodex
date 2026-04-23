@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import { Provider } from "react-redux";
 import "./index.css";
 import "leaflet/dist/leaflet.css";
+import "./services/firebase";
 import App from "./App.jsx";
 import store from "./redux/store";
 

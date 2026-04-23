@@ -1,8 +1,17 @@
 const mongoose = require("mongoose");
 const { ORDER_STATUS, PAYMENT_STATUS } = require("../constants/order");
 
+const generateShortId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+
 const orderSchema = new mongoose.Schema(
   {
+    shortId: {
+      type: String,
+      required: true,
+      unique: true,
+      index: true,
+      default: generateShortId,
+    },
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
     restaurant: {
       type: mongoose.Schema.Types.ObjectId,
@@ -68,5 +77,11 @@ const orderSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+orderSchema.pre("validate", function ensureShortId() {
+  if (!this.shortId) {
+    this.shortId = generateShortId();
+  }
+});
 
 module.exports = mongoose.model("Order", orderSchema);

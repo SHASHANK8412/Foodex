@@ -1,5 +1,6 @@
 const { StatusCodes } = require("http-status-codes");
 const crypto = require("crypto");
+const env = require("../config/env");
 const Restaurant = require("../models/Restaurant");
 const MenuItem = require("../models/MenuItem");
 const Order = require("../models/Order");
@@ -97,11 +98,10 @@ const createOrder = async ({ userId, restaurantId, items, deliveryAddress }) => 
   return {
     order: populated,
     payment: {
-      keyId: process.env.RAZORPAY_KEY_ID || "",
+      keyId: env.razorpayKeyId,
       razorpayOrderId: razorpayOrder.id,
       amount: razorpayOrder.amount,
       currency: razorpayOrder.currency,
-      isMock: razorpayOrder.isMock || false,
     },
   };
 };
@@ -112,13 +112,11 @@ const verifyOrderPayment = async ({ orderId, razorpayOrderId, razorpayPaymentId,
     throw new ApiError(StatusCodes.NOT_FOUND, "Order not found");
   }
 
-  const isValid = razorpayOrderId.startsWith("mock_order_")
-    ? true
-    : verifySignature({
-        orderId: razorpayOrderId,
-        paymentId: razorpayPaymentId,
-        signature: razorpaySignature,
-      });
+  const isValid = verifySignature({
+    orderId: razorpayOrderId,
+    paymentId: razorpayPaymentId,
+    signature: razorpaySignature,
+  });
 
   if (!isValid) {
     order.paymentStatus = PAYMENT_STATUS.FAILED;

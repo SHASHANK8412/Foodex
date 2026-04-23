@@ -15,14 +15,10 @@ const razorpayInstance = isRazorpayConfigured
 
 const createRazorpayOrder = async ({ amount, receipt, notes }) => {
   if (!isRazorpayConfigured) {
-    return {
-      id: `mock_order_${Date.now()}`,
-      amount,
-      currency: "INR",
-      receipt,
-      notes,
-      isMock: true,
-    };
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "Razorpay is not configured. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET."
+    );
   }
 
   return razorpayInstance.orders.create({

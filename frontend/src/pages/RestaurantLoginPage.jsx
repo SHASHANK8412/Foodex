@@ -7,6 +7,7 @@ const RestaurantLoginPage = () => {
       subtitle="Login to manage your restaurant and incoming orders."
       allowedRoles={["restaurant"]}
       loginPathHint="/restaurant/login"
+      showGoogle
       showRegisterLink
       registerTo="/restaurant/register"
       showRoleLinks={false}

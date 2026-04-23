@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const baseURL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5001/api";
+const baseURL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 
 const api = axios.create({
   baseURL,
@@ -18,6 +18,11 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem("foodex_token");
+      localStorage.removeItem("foodex_user");
+    }
+
     const message = error.response?.data?.message || error.message || "Request failed";
     return Promise.reject(new Error(message));
   }
