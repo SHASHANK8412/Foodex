@@ -6,6 +6,8 @@ const MenuItem = require("../models/MenuItem");
 const User = require("../models/User");
 const env = require("../config/env");
 
+const LOCAL_TIMEZONE = process.env.ANALYTICS_TIMEZONE || "Asia/Kolkata";
+
 const openai = env.openaiApiKey ? new OpenAI({ apiKey: env.openaiApiKey }) : null;
 
 const getAnalyticsSnapshot = async () => {
@@ -26,7 +28,10 @@ const getAnalyticsSnapshot = async () => {
     Order.aggregate([
       {
         $group: {
-          _id: { hour: { $hour: "$createdAt" }, dayOfWeek: { $dayOfWeek: "$createdAt" } },
+          _id: {
+            hour: { $hour: { date: "$createdAt", timezone: LOCAL_TIMEZONE } },
+            dayOfWeek: { $dayOfWeek: { date: "$createdAt", timezone: LOCAL_TIMEZONE } },
+          },
           count: { $sum: 1 },
         },
       },

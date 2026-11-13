@@ -34,6 +34,24 @@ const protect = async (req, _res, next) => {
   }
 };
 
+// For endpoints that also serve signed-out visitors: a valid token attaches the
+// user, a missing or invalid one leaves req.user unset.
+const optionalAuth = (req, _res, next) => {
+  const authHeader = req.headers.authorization || "";
+  if (!authHeader.startsWith("Bearer ")) {
+    return next();
+  }
+
+  try {
+    const decoded = jwt.verify(authHeader.split(" ")[1], env.jwtSecret);
+    req.user = { userId: decoded.userId, role: decoded.role };
+  } catch (_error) {
+    // Treated as anonymous.
+  }
+  return next();
+};
+
 module.exports = {
   protect,
+  optionalAuth,
 };

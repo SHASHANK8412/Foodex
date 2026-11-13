@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import api from "../services/api";
@@ -18,11 +18,11 @@ const GroupOrderPage = () => {
 
   const code = String(inviteCode || "").toUpperCase();
 
-  const loadSession = async () => {
+  const loadSession = useCallback(async () => {
     const response = await api.get(`/group-orders/${code}`);
     setSession(response.data?.data || null);
     return response.data?.data;
-  };
+  }, [code]);
 
   useEffect(() => {
     const bootstrap = async () => {
@@ -47,7 +47,7 @@ const GroupOrderPage = () => {
     };
 
     bootstrap();
-  }, [code, dispatch]);
+  }, [code, dispatch, loadSession]);
 
   const subtotal = useMemo(() => {
     return (session?.items || []).reduce((sum, item) => sum + Number(item.lineTotal || 0), 0);

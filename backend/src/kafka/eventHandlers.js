@@ -39,8 +39,7 @@ const createEventHandlers = ({ publishEvent }) => {
         type: "order_created",
         message: "Order created notification queued",
       });
-
-      await assignDelivery(event, "order_created");
+      // A rider is assigned once the order is paid (foodex.order.paid), not here.
     },
 
     [KAFKA_TOPICS.ORDER_PAID]: async (event) => {

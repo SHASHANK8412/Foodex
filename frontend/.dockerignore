@@ -1,0 +1,8 @@
+node_modules
+dist
+coverage
+test-results
+playwright-report
+# Local env files hold personal API keys; the image must not contain them.
+.env
+.env.*

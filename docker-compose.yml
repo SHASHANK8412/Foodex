@@ -1,19 +1,26 @@
-# Data platform for Foodex: Kafka (KRaft, no ZooKeeper) + a Spark standalone cluster.
+# Foodex: the full stack in containers.
 #
-#   docker compose up -d --build                    Kafka, Kafka UI, Spark master/worker, streaming job
-#   docker compose --profile batch up spark-batch   run the Spark batch job once
+#   cp .env.example .env              set the two secrets (see the file)
+#   docker compose up -d --build      web app, API and MongoDB
+#                                     -> http://localhost:3000, API docs at /api/docs
 #
-# The API and the React app run on the host as usual (npm run dev) with
-# KAFKA_ENABLED=true and KAFKA_BROKERS=localhost:9092 in backend/.env.
+# Optional profiles:
+#   --profile data           Kafka (KRaft), Kafka UI, Spark cluster and the streaming job.
+#                            Also set KAFKA_ENABLED=true in .env so the API uses the broker.
+#   --profile batch          run the Spark batch job once: docker compose --profile batch up spark-batch
+#   --profile observability  Prometheus scraping the API's /metrics
 #
+#   Web app       http://localhost:3000
+#   API           http://localhost:5000  (docs: /api/docs, health: /api/health/ready)
 #   Kafka UI      http://localhost:8080
 #   Spark master  http://localhost:8081
 #   Spark worker  http://localhost:8082
+#   Prometheus    http://localhost:9090
 #
-# Needs roughly 6 GB of memory for Docker. On a smaller machine set
-# SPARK_MASTER_URL=local[2] to run the jobs without the standalone cluster.
+# The data profile needs roughly 6 GB of memory for Docker. On a smaller
+# machine set SPARK_MASTER_URL=local[2] to run the jobs without the cluster.
 
-name: foodex-data
+name: foodex
 
 x-spark: &spark
   build: ./backend/analytics
@@ -28,7 +35,71 @@ x-spark: &spark
     - foodex
 
 services:
+  mongo:
+    image: mongo:7.0
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - foodex
+
+  api:
+    build: ./backend
+    image: foodex-api:latest
+    depends_on:
+      mongo:
+        condition: service_healthy
+    ports:
+      - "5000:5000"
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      MONGO_URI: mongodb://mongo:27017/foodex
+      CLIENT_URL: http://localhost:3000
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (copy .env.example)}
+      GRAPHQL_PERSISTED_SECRET: ${GRAPHQL_PERSISTED_SECRET:?Set GRAPHQL_PERSISTED_SECRET in .env}
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
+      KAFKA_ENABLED: ${KAFKA_ENABLED:-false}
+      KAFKA_BROKERS: kafka:19092
+      ANALYTICS_OUTPUT_DIR: /app/analytics/output
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
+      GOOGLE_GEMINI_API_KEY: ${GOOGLE_GEMINI_API_KEY:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    volumes:
+      # Gold datasets written by the Spark batch job, served by the API.
+      - ./backend/analytics/output:/app/analytics/output:ro
+    networks:
+      - foodex
+
+  web:
+    build: ./frontend
+    image: foodex-web:latest
+    depends_on:
+      - api
+    ports:
+      - "3000:80"
+    networks:
+      - foodex
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    profiles: ["observability"]
+    depends_on:
+      - api
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./ops/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+      - foodex
+
   kafka:
+    profiles: ["data"]
     image: apache/kafka:3.9.0
     hostname: kafka
     ports:
@@ -61,6 +132,7 @@ services:
 
   # Creates the topics up front so Spark can subscribe before the API has started.
   kafka-init:
+    profiles: ["data"]
     image: apache/kafka:3.9.0
     depends_on:
       kafka:
@@ -78,6 +150,7 @@ services:
       - foodex
 
   kafka-ui:
+    profiles: ["data"]
     image: provectuslabs/kafka-ui:v0.7.2
     depends_on:
       kafka:
@@ -91,6 +164,7 @@ services:
       - foodex
 
   spark-master:
+    profiles: ["data", "batch"]
     <<: *spark
     hostname: spark-master
     command: >
@@ -101,6 +175,7 @@ services:
       - "7077:7077"
 
   spark-worker:
+    profiles: ["data", "batch"]
     <<: *spark
     hostname: spark-worker
     depends_on:
@@ -113,6 +188,7 @@ services:
 
   # Spark Structured Streaming: Kafka -> windowed metrics -> Kafka, and Kafka -> bronze Parquet.
   spark-streaming:
+    profiles: ["data"]
     <<: *spark
     hostname: spark-streaming
     depends_on:
@@ -157,5 +233,6 @@ networks:
   foodex:
 
 volumes:
+  mongo-data:
   spark-checkpoints:
   spark-ivy:

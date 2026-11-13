@@ -14,8 +14,12 @@ const registerUser = async (payload) => {
     throw new ApiError(StatusCodes.CONFLICT, "Email already registered");
   }
 
+  // Only these fields come from the request; role and account state never do.
   const user = await User.create({
-    ...payload,
+    name: payload.name,
+    email: payload.email,
+    password: payload.password,
+    phone: payload.phone,
     role: ROLES.USER,
   });
   const token = user.generateAuthToken();

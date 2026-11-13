@@ -9,12 +9,9 @@ const { deliveryPartnerValidator } = require("../validators/deliveryValidator");
 const router = express.Router();
 
 // Delivery partner-specific routes
-router.put(
-  "/availability",
-  protect,
-  authorize(ROLES.DELIVERY_PARTNER),
-  deliveryController.updateAvailability
-);
+// ROLES.DELIVERY_PARTNER does not exist, so this route used to reject every rider.
+router.get("/me", protect, authorize(ROLES.DELIVERY), deliveryController.getMyProfile);
+router.put("/availability", protect, authorize(ROLES.DELIVERY), deliveryController.updateAvailability);
 
 // Admin routes for managing delivery partners
 router.use(protect, authorize(ROLES.ADMIN));

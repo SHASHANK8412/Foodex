@@ -9,6 +9,7 @@ import QuickReorderCard from "../components/QuickReorderCard";
 import SemanticSearchPanel from "../components/SemanticSearchPanel";
 import { fetchRestaurants } from "../redux/slices/restaurantSlice";
 import { fetchOrders } from "../redux/slices/orderSlice";
+import api from "../services/api";
 
 const HomePage = () => {
   const dispatch = useDispatch();
@@ -34,33 +35,21 @@ const HomePage = () => {
     [restaurants]
   );
 
-  const dynamicOffers = useMemo(() => {
-    const city = openRestaurants[0]?.address?.city || "your area";
-    const busyRestaurant =
-      openRestaurants.find((restaurant) => restaurant.demandLevel === "high") || openRestaurants[0];
+  const [offers, setOffers] = useState([]);
 
-    return [
-      {
-        title: `${Math.min(40, 15 + openRestaurants.length)}% OFF in ${city}`,
-        code: `CITY${Math.max(10, openRestaurants.length * 2)}`,
-        sub: `${openRestaurants.length || 0} restaurants currently open near you`,
-      },
-      {
-        title: "Instant Reorder Deal",
-        code: quickReorder.length ? "REPEAT15" : "WELCOME10",
-        sub: quickReorder.length
-          ? `Save on your top ${Math.min(quickReorder.length, 3)} AI-predicted reorders`
-          : "Unlock discount on your first quick reorder",
-      },
-      {
-        title: "Kitchen Rush Flash",
-        code: busyRestaurant ? "RUSH20" : "FASTFREE",
-        sub: busyRestaurant
-          ? `${busyRestaurant.name} is trending. Grab priority slot now.`
-          : "Free delivery window active for selected kitchens",
-      },
-    ];
-  }, [openRestaurants, quickReorder]);
+  // Real, currently valid coupons and restaurant promotions from the server.
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get("/pricing/offers")
+      .then((response) => {
+        if (!cancelled) setOffers(response.data.data || []);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const pulseStats = useMemo(
     () => [
@@ -146,16 +135,20 @@ const HomePage = () => {
     [openRestaurants.length, quickReorder.length, orderMix.onRoute]
   );
 
+  // Keyed on the user id: the user object is replaced when /auth/me refreshes it,
+  // which would otherwise refetch everything.
+  const userId = user?._id || user?.id;
+
   useEffect(() => {
     dispatch(fetchRestaurants());
 
-    if (user) {
+    if (userId) {
       dispatch(fetchRecommendations());
       dispatch(fetchAiRecommendations());
       dispatch(fetchQuickReorder());
       dispatch(fetchOrders());
     }
-  }, [dispatch, user]);
+  }, [dispatch, userId]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -191,7 +184,7 @@ const HomePage = () => {
         </div>
       </section>
 
-      <OfferBanners offers={dynamicOffers} />
+      <OfferBanners offers={offers} />
 
       <section className="relative overflow-hidden rounded-[2rem] border border-slate-200/70 bg-white/80 p-6 shadow-xl backdrop-blur dark:border-slate-700 dark:bg-slate-900/70 sm:p-8">
         <div className="pointer-events-none absolute -left-10 top-0 h-32 w-32 rounded-full bg-rose-300/30 blur-2xl" />

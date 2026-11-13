@@ -71,7 +71,9 @@ const startServer = async () => {
   try {
     await connectDB();
 
-    if (env.nodeEnv === "development") {
+    // Demo accounts, restaurants and coupons: always in development, and in a
+    // production build when SEED_DEMO_DATA=true (the Docker Compose demo).
+    if (env.nodeEnv === "development" || process.env.SEED_DEMO_DATA === "true") {
       await ensureDemoData();
     }
 

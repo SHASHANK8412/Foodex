@@ -1,11 +1,15 @@
 const mongoose = require("mongoose");
 const Order = require("../models/Order");
 const Restaurant = require("../models/Restaurant");
+const MenuItem = require("../models/MenuItem");
 const { readDataset } = require("./sparkOutputStore");
 
 // Serves the features built by the Spark batch job. Each function falls back to
 // a MongoDB aggregate or a heuristic when the job has not produced that dataset,
 // and reports which source answered in the `source` field.
+
+// Hour-of-day features use the restaurants' local time (the Spark job uses the same zone).
+const LOCAL_TIMEZONE = process.env.ANALYTICS_TIMEZONE || "Asia/Kolkata";
 
 const toSafeNumber = (value, fallback = 0) => {
   const number = Number(value);
@@ -115,7 +119,7 @@ const getDemandPrediction = async (restaurantId) => {
     { $match: { restaurant: restaurantObjectId } },
     {
       $group: {
-        _id: { hourOfDay: { $hour: "$createdAt" } },
+        _id: { hourOfDay: { $hour: { date: "$createdAt", timezone: LOCAL_TIMEZONE } } },
         expectedOrders: { $sum: 1 },
       },
     },
@@ -130,6 +134,95 @@ const getDemandPrediction = async (restaurantId) => {
       expected_orders: item.expectedOrders,
     }))
   );
+};
+
+// Dishes to suggest alongside a cart. Uses the FP-Growth association rules from
+// the Spark batch job when any match this restaurant's menu, otherwise counts
+// what was ordered together with the cart's items in past orders.
+const getFrequentlyBoughtTogether = async ({ restaurantId, menuItemIds = [], limit = 3 }) => {
+  const restaurantObjectId = toObjectId(restaurantId);
+  const cartIds = menuItemIds.map(String).filter((id) => mongoose.isValidObjectId(id));
+  if (!restaurantObjectId || !cartIds.length) {
+    return { source: "none", suggestions: [] };
+  }
+
+  const menu = await MenuItem.find({ restaurant: restaurantObjectId, isAvailable: true })
+    .select("name price isVeg imageUrl")
+    .lean();
+  const byName = new Map(menu.map((item) => [item.name, item]));
+  const cartNames = new Set(menu.filter((item) => cartIds.includes(String(item._id))).map((item) => item.name));
+
+  const toSuggestion = (item, extra) => ({
+    menuItemId: String(item._id),
+    name: item.name,
+    price: item.price,
+    isVeg: Boolean(item.isVeg),
+    imageUrl: item.imageUrl || null,
+    ...extra,
+  });
+
+  // Spark rules: the whole antecedent is in the cart, the consequent is a single
+  // dish on this menu that is not in the cart yet.
+  const best = new Map();
+  readDataset("basket_rules").forEach((rule) => {
+    const antecedent = Array.isArray(rule.antecedent) ? rule.antecedent : [];
+    const consequent = Array.isArray(rule.consequent) ? rule.consequent : [];
+    if (!antecedent.length || consequent.length !== 1) return;
+    if (!antecedent.every((name) => cartNames.has(name))) return;
+
+    const name = consequent[0];
+    const item = byName.get(name);
+    if (!item || cartNames.has(name)) return;
+
+    const previous = best.get(name);
+    if (!previous || toSafeNumber(rule.lift) > previous.lift) {
+      best.set(name, { item, confidence: toSafeNumber(rule.confidence), lift: toSafeNumber(rule.lift), because: antecedent });
+    }
+  });
+
+  if (best.size) {
+    return {
+      source: "spark_fp_growth",
+      suggestions: [...best.values()]
+        .sort((a, b) => b.lift - a.lift)
+        .slice(0, limit)
+        .map((entry) =>
+          toSuggestion(entry.item, {
+            confidence: Number(entry.confidence.toFixed(3)),
+            lift: Number(entry.lift.toFixed(2)),
+            because: entry.because,
+          })
+        ),
+    };
+  }
+
+  const cartObjectIds = cartIds.map((id) => new mongoose.Types.ObjectId(id));
+  const [together, basketCount] = await Promise.all([
+    Order.aggregate([
+      { $match: { restaurant: restaurantObjectId, "items.menuItem": { $in: cartObjectIds } } },
+      { $unwind: "$items" },
+      { $match: { "items.menuItem": { $nin: cartObjectIds } } },
+      { $group: { _id: "$items.menuItem", orders: { $addToSet: "$_id" } } },
+      { $project: { orders: { $size: "$orders" } } },
+      { $sort: { orders: -1 } },
+      { $limit: limit * 2 },
+    ]),
+    Order.countDocuments({ restaurant: restaurantObjectId, "items.menuItem": { $in: cartObjectIds } }),
+  ]);
+
+  const menuById = new Map(menu.map((item) => [String(item._id), item]));
+  return {
+    source: "fallback_cooccurrence",
+    suggestions: together
+      .filter((row) => menuById.has(String(row._id)))
+      .slice(0, limit)
+      .map((row) =>
+        toSuggestion(menuById.get(String(row._id)), {
+          confidence: basketCount ? Number((row.orders / basketCount).toFixed(3)) : 0,
+          orders: row.orders,
+        })
+      ),
+  };
 };
 
 const estimateDeliveryTime = ({ distanceKm, itemCount, hourOfDay }) => {
@@ -171,6 +264,7 @@ const estimateDeliveryTime = ({ distanceKm, itemCount, hourOfDay }) => {
 };
 
 module.exports = {
+  getFrequentlyBoughtTogether,
   getRecommendations,
   getDemandPrediction,
   track,

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { X } from 'lucide-react';
-import { Toaster, toast } from 'sonner';
+import { Toaster } from 'sonner';
 import { menuItemSchema } from '../validators/menuValidator';
 import ImageUploadSection from './ImageUploadSection';
 
@@ -21,7 +21,6 @@ const AddEditItemModal = ({
   const [tagInput, setTagInput] = useState('');
 
   const {
-    control,
     register,
     handleSubmit,
     reset,

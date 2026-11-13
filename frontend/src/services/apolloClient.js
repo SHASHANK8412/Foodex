@@ -1,6 +1,6 @@
 import { ApolloClient, InMemoryCache, HttpLink, ApolloLink } from "@apollo/client/core";
 
-const graphqlUrl = import.meta.env.VITE_GRAPHQL_URL || "http://localhost:5000/graphql";
+const graphqlUrl = import.meta.env.VITE_GRAPHQL_URL || (import.meta.env.PROD ? "/graphql" : "http://localhost:5000/graphql");
 
 const authLink = new ApolloLink((operation, forward) => {
   const token = localStorage.getItem("foodex_token");

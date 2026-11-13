@@ -65,6 +65,7 @@ Demo credentials:
 - owner.chinese@foodex.com / owner123
 - owner.italian@foodex.com / owner123
 - user@foodex.com / user123
+- rider@foodex.com / rider123
 
 ## API Base URL
 

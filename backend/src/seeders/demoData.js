@@ -4,6 +4,16 @@ const Restaurant = require("../models/Restaurant");
 const MenuItem = require("../models/MenuItem");
 const ROLES = require("../constants/roles");
 const mongoose = require("mongoose");
+const { ensureDemoCoupons } = require("../services/pricingService");
+
+const DEMO_RIDER = {
+  name: "Demo Rider",
+  email: "rider@foodex.com",
+  password: "rider123",
+  role: ROLES.DELIVERY,
+  phone: "+91-9000000100",
+  deliveryPartnerProfile: { isAvailable: true },
+};
 
 const usersSeed = [
   {
@@ -36,6 +46,7 @@ const usersSeed = [
     password: "user123",
     role: ROLES.USER,
   },
+  DEMO_RIDER,
 ];
 
 const buildRestaurants = (owners, adminId) => {
@@ -291,12 +302,22 @@ const seedDemoData = async ({ force = false } = {}) => {
   console.log("owner.chinese@foodex.com / owner123");
   console.log("owner.italian@foodex.com / owner123");
   console.log("user@foodex.com / user123");
-  console.log("Demo restaurants and menu items inserted successfully.");
+  console.log("rider@foodex.com / rider123");
+  await ensureDemoCoupons();
+  console.log("Demo restaurants, menu items and coupons inserted successfully.");
 
   return { seeded: true };
 };
 
-const ensureDemoData = async () => seedDemoData({ force: false });
+const ensureDemoData = async () => {
+  const result = await seedDemoData({ force: false });
+  await ensureDemoCoupons();
+  // Databases seeded before the rider existed get one too.
+  if (!(await User.exists({ email: DEMO_RIDER.email }))) {
+    await User.create(DEMO_RIDER);
+  }
+  return result;
+};
 
 if (require.main === module) {
   seedDemoData({ force: true })

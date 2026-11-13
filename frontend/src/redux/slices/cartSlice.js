@@ -1,14 +1,30 @@
 import { createSlice } from "@reduxjs/toolkit";
 
-const savedCart = localStorage.getItem("foodex_cart");
+const readStored = (key, fallback) => {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const writeStored = (key, value) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Storage full or blocked: the cart still works for this page view.
+  }
+};
 
 const initialState = {
-  items: savedCart ? JSON.parse(savedCart) : [],
+  items: readStored("foodex_cart", []),
+  // The code the customer entered; the server decides whether it applies.
+  couponCode: readStored("foodex_coupon", ""),
 };
 
-const persistCart = (items) => {
-  localStorage.setItem("foodex_cart", JSON.stringify(items));
-};
+const persistCart = (items) => writeStored("foodex_cart", items);
+const persistCoupon = (code) => writeStored("foodex_coupon", code);
 
 const cartSlice = createSlice({
   name: "cart",
@@ -20,6 +36,8 @@ const cartSlice = createSlice({
 
       if (state.items.length && state.items[0].restaurantId !== item.restaurantId) {
         state.items = [];
+        state.couponCode = "";
+        persistCoupon("");
       }
 
       const existing = state.items.find((cartItem) => cartItem.menuItemId === item.menuItemId);
@@ -48,11 +66,17 @@ const cartSlice = createSlice({
     },
     clearCart(state) {
       state.items = [];
+      state.couponCode = "";
       persistCart([]);
+      persistCoupon("");
+    },
+    setCouponCode(state, action) {
+      state.couponCode = String(action.payload || "").trim().toUpperCase();
+      persistCoupon(state.couponCode);
     },
   },
 });
 
-export const { addToCart, updateQuantity, removeFromCart, clearCart } = cartSlice.actions;
+export const { addToCart, updateQuantity, removeFromCart, clearCart, setCouponCode } = cartSlice.actions;
 
 export default cartSlice.reducer;

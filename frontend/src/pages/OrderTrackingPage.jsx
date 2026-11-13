@@ -13,7 +13,9 @@ const OrderTrackingPage = () => {
   const orderId = searchParams.get("orderId");
   const { token } = useSelector((state) => state.auth);
   const { orders, activeOrder, loading } = useSelector((state) => state.orders);
-  const [liveLocation, setLiveLocation] = useState(null);
+  // Positions pushed by the rider over Socket.io; before the first one arrives,
+  // the latest location recorded on the order is shown.
+  const [socketLocation, setLiveLocation] = useState(null);
   const [chatInput, setChatInput] = useState("");
   const [chatMessages, setChatMessages] = useState([
     { from: "delivery", text: "Hi, I picked up your order and I am on my way." },
@@ -75,19 +77,14 @@ const OrderTrackingPage = () => {
     };
   }, [token, activeRoomOrderId, dispatch]);
 
-  useEffect(() => {
-    if (!currentOrder?.trackingEvents?.length) {
-      return;
-    }
-
-    const latestLocationEvent = [...currentOrder.trackingEvents]
-      .reverse()
-      .find((event) => event.location?.lat !== undefined && event.location?.lng !== undefined);
-
-    if (latestLocationEvent?.location) {
-      setLiveLocation(latestLocationEvent.location);
-    }
-  }, [currentOrder]);
+  const recordedLocation = useMemo(
+    () =>
+      [...(currentOrder?.trackingEvents || [])]
+        .reverse()
+        .find((event) => event.location?.lat !== undefined && event.location?.lng !== undefined)?.location || null,
+    [currentOrder]
+  );
+  const liveLocation = socketLocation || recordedLocation;
   const etaProgress = useMemo(() => {
     const statusMap = {
       pending: 15,

@@ -1,90 +1,271 @@
-import React, { useState } from "react";
-import { useSelector } from "react-redux";
-import { Navigate } from "react-router-dom";
-import { ROLES } from "../utils/constants";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import api from "../services/api";
+import { connectSocket } from "../services/socket";
+import { addToast } from "../redux/slices/uiSlice";
+import { formatCurrency, formatDateTime } from "../utils/format";
+import { ORDER_STATUS_LABELS } from "../utils/constants";
 
-// Mock data for now
-const mockOrders = [
-  {
-    _id: "order1",
-    restaurant: { name: "Pizza Palace", location: { lat: 28.62, lng: 77.22 } },
-    deliveryAddress: { line1: "123, Connaught Place", location: { lat: 28.63, lng: 77.21 } },
-    status: "PREPARING",
-    totalAmount: 550,
-  },
-  {
-    _id: "order2",
-    restaurant: { name: "Burger Barn", location: { lat: 28.55, lng: 77.25 } },
-    deliveryAddress: { line1: "456, Hauz Khas", location: { lat: 28.54, lng: 77.21 } },
-    status: "OUT_FOR_DELIVERY",
-    totalAmount: 800,
-  },
-];
+const ACTIVE = ["confirmed", "preparing", "out_for_delivery"];
+const LOCATION_INTERVAL_MS = 10000;
+
+const card = "rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900";
+
+const addressText = (address = {}) => [address.line1, address.city, address.postalCode].filter(Boolean).join(", ");
+
+const mapsLink = (address = {}) => {
+  const { lat, lng } = address.location || {};
+  const query = lat !== undefined && lng !== undefined ? `${lat},${lng}` : addressText(address);
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(query)}`;
+};
+
+// Shares the rider's position with the customer's tracking page while an order
+// is out for delivery. The server only relays it for the assigned rider.
+const useLocationSharing = (token, orderIds, enabled) => {
+  const [error, setError] = useState("");
+  const latest = useRef(null);
+  const key = orderIds.join(",");
+
+  useEffect(() => {
+    if (!enabled || !key || !navigator.geolocation) {
+      return undefined;
+    }
+
+    const socket = connectSocket(token);
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        latest.current = { lat: position.coords.latitude, lng: position.coords.longitude };
+        setError("");
+      },
+      (positionError) =>
+        setError(
+          positionError.code === 1
+            ? "Location access is blocked for this site. Allow it in the browser to share your position."
+            : "Your location is not available right now."
+        ),
+      { enableHighAccuracy: true, maximumAge: 5000 }
+    );
+
+    const send = () => {
+      if (latest.current) {
+        key.split(",").forEach((orderId) => socket?.emit("order:location:update", { orderId, location: latest.current }));
+      }
+    };
+    const timer = setInterval(send, LOCATION_INTERVAL_MS);
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+      clearInterval(timer);
+    };
+  }, [token, key, enabled]);
+
+  return navigator.geolocation ? error : "This browser cannot share location";
+};
 
 const DeliveryDashboardPage = () => {
-  const { user } = useSelector((state) => state.auth);
-  const [isAvailable, setIsAvailable] = useState(true);
-  const [orders, setOrders] = useState(mockOrders);
+  const dispatch = useDispatch();
+  const { token } = useSelector((state) => state.auth);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isAvailable, setIsAvailable] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [busyId, setBusyId] = useState("");
 
-  if (user?.role !== ROLES.DELIVERY_PARTNER) {
-    return <Navigate to="/" />;
-  }
+  const load = useCallback(async () => {
+    try {
+      const [ordersResponse, profileResponse] = await Promise.all([api.get("/orders"), api.get("/delivery/me")]);
+      setOrders(ordersResponse.data.data || []);
+      setIsAvailable(Boolean(profileResponse.data.data?.isAvailable));
+    } catch (error) {
+      dispatch(addToast({ type: "error", message: error.message }));
+    } finally {
+      setLoading(false);
+    }
+  }, [dispatch]);
 
-  const handleStatusUpdate = (orderId, newStatus) => {
-    // In a real app, this would dispatch an action to call the API
-    console.log(`Updating order ${orderId} to ${newStatus}`);
-    setOrders(
-      orders.map((o) => (o._id === orderId ? { ...o, status: newStatus } : o))
-    );
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  // New assignments and status changes arrive over Socket.io.
+  useEffect(() => {
+    if (!token) return undefined;
+    const socket = connectSocket(token);
+    socket?.on("order:update", load);
+    return () => socket?.off("order:update", load);
+  }, [token, load]);
+
+  const active = orders.filter((order) => ACTIVE.includes(order.status));
+  const completed = orders.filter((order) => order.status === "delivered").slice(0, 10);
+  const onRoute = active.filter((order) => order.status === "out_for_delivery").map((order) => order._id);
+  const locationError = useLocationSharing(token, onRoute, sharing);
+
+  const toggleAvailability = async () => {
+    try {
+      const response = await api.put("/delivery/availability", { isAvailable: !isAvailable });
+      setIsAvailable(response.data.data.isAvailable);
+    } catch (error) {
+      dispatch(addToast({ type: "error", message: error.message }));
+    }
   };
 
+  const updateStatus = async (order, status) => {
+    setBusyId(order._id);
+    try {
+      await api.patch(`/orders/${order._id}/status`, {
+        status,
+        note: status === "delivered" ? "Delivered by rider" : "Picked up by rider",
+      });
+      if (status === "out_for_delivery") {
+        setSharing(true);
+      }
+      await load();
+    } catch (error) {
+      dispatch(addToast({ type: "error", message: error.message }));
+    } finally {
+      setBusyId("");
+    }
+  };
+
+  const earnings = completed.reduce((sum, order) => sum + (order.deliveryFee || 0), 0);
+
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Delivery Dashboard</h1>
-        <div className="flex items-center gap-4">
-          <span className="font-semibold">Availability:</span>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={isAvailable}
-              onChange={() => setIsAvailable(!isAvailable)}
-              className="sr-only peer"
-            />
-            <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-          </label>
+    <div className="space-y-6">
+      <header className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-slate-100">Deliveries</h1>
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            New orders are assigned to available riders with the fewest active deliveries.
+          </p>
         </div>
-      </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={isAvailable}
+          onClick={toggleAvailability}
+          className={`inline-flex items-center gap-3 rounded-full border px-4 py-2 text-sm font-semibold ${
+            isAvailable
+              ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+              : "border-slate-300 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+          }`}
+        >
+          <span className={`h-2.5 w-2.5 rounded-full ${isAvailable ? "bg-emerald-500" : "bg-slate-400"}`} />
+          {isAvailable ? "Available for orders" : "Offline"}
+        </button>
+      </header>
 
-      {/* In a real app, a map view of orders would go here */}
+      <section className="grid gap-4 sm:grid-cols-3">
+        <div className={card}>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Active</p>
+          <p className="mt-1 text-3xl font-black text-slate-900 dark:text-slate-100">{active.length}</p>
+        </div>
+        <div className={card}>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Delivered</p>
+          <p className="mt-1 text-3xl font-black text-slate-900 dark:text-slate-100">
+            {orders.filter((order) => order.status === "delivered").length}
+          </p>
+        </div>
+        <div className={card}>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Delivery fees, last 10</p>
+          <p className="mt-1 text-3xl font-black text-slate-900 dark:text-slate-100">{formatCurrency(earnings)}</p>
+        </div>
+      </section>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {orders.map((order) => (
-          <div key={order._id} className="bg-white p-4 rounded-lg shadow-md">
-            <h3 className="font-bold text-lg">{order.restaurant.name}</h3>
-            <p className="text-sm text-gray-600">{order.deliveryAddress.line1}</p>
-            <p className="font-bold my-2">Status: <span className="text-blue-600">{order.status}</span></p>
-            <div className="flex gap-2 mt-4">
-              {order.status === "PREPARING" && (
-                <button
-                  onClick={() => handleStatusUpdate(order._id, "OUT_FOR_DELIVERY")}
-                  className="bg-blue-500 text-white px-3 py-1 rounded-md text-sm"
-                >
-                  Pick Up
-                </button>
-              )}
-              {order.status === "OUT_FOR_DELIVERY" && (
-                <button
-                  onClick={() => handleStatusUpdate(order._id, "DELIVERED")}
-                  className="bg-green-500 text-white px-3 py-1 rounded-md text-sm"
-                >
-                  Mark Delivered
-                </button>
-              )}
-            </div>
+      {onRoute.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-sky-50 px-4 py-3 text-sm text-sky-900 dark:bg-sky-950 dark:text-sky-200">
+          <span>
+            {sharing
+              ? locationError || "Sharing your live location with customers every 10 seconds."
+              : "Share your location so customers can follow the delivery."}
+          </span>
+          <button
+            type="button"
+            onClick={() => setSharing((value) => !value)}
+            className="rounded-full bg-sky-700 px-4 py-1.5 font-semibold text-white"
+          >
+            {sharing ? "Stop sharing" : "Share location"}
+          </button>
+        </div>
+      )}
+
+      <section className="space-y-3">
+        <h2 className="text-xl font-black text-slate-900 dark:text-slate-100">Active deliveries</h2>
+        {loading ? (
+          <p className="text-sm text-slate-500">Loading…</p>
+        ) : !active.length ? (
+          <div className={`${card} text-sm text-slate-600 dark:text-slate-400`}>
+            No active deliveries. {isAvailable ? "You will be notified when an order is assigned." : "Go available to receive orders."}
           </div>
-        ))}
-      </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2">
+            {active.map((order) => (
+              <article key={order._id} className={card}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">#{order.shortId}</p>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">{order.restaurant?.name}</h3>
+                  </div>
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                    {ORDER_STATUS_LABELS[order.status] || order.status}
+                  </span>
+                </div>
+                <p className="mt-3 text-sm text-slate-700 dark:text-slate-300">
+                  <span className="font-semibold">Drop:</span> {addressText(order.deliveryAddress)}
+                </p>
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                  {(order.items || []).reduce((sum, item) => sum + item.quantity, 0)} items · {formatCurrency(order.totalAmount)} ·
+                  placed {formatDateTime(order.createdAt)}
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {order.status !== "out_for_delivery" ? (
+                    <button
+                      type="button"
+                      disabled={busyId === order._id}
+                      onClick={() => updateStatus(order, "out_for_delivery")}
+                      className="rounded-full bg-slate-900 px-4 py-2 text-sm font-bold text-white disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900"
+                    >
+                      Picked up
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={busyId === order._id}
+                      onClick={() => updateStatus(order, "delivered")}
+                      className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
+                    >
+                      Mark delivered
+                    </button>
+                  )}
+                  <a
+                    href={mapsLink(order.deliveryAddress)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-200"
+                  >
+                    Directions
+                  </a>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {completed.length > 0 && (
+        <section className={card}>
+          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">Recently delivered</h2>
+          <ul className="mt-3 divide-y divide-slate-100 text-sm dark:divide-slate-800">
+            {completed.map((order) => (
+              <li key={order._id} className="flex justify-between gap-3 py-2 text-slate-700 dark:text-slate-300">
+                <span>
+                  #{order.shortId} · {order.restaurant?.name}
+                </span>
+                <span className="tabular-nums">{formatDateTime(order.updatedAt)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 };

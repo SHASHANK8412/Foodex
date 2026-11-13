@@ -25,7 +25,7 @@ const createPartner = asyncHandler(async (req, res) => {
 });
 
 const updateAvailability = asyncHandler(async (req, res) => {
-  const { isAvailable } = req.body;
+  const isAvailable = req.body?.isAvailable === true;
   const deliveryPartnerId = req.user.userId;
 
   const partner = await User.findById(deliveryPartnerId);
@@ -47,7 +47,20 @@ const updateAvailability = asyncHandler(async (req, res) => {
   });
 });
 
+const getMyProfile = asyncHandler(async (req, res) => {
+  const partner = await User.findById(req.user.userId).select("name phone deliveryPartnerProfile");
+  res.status(StatusCodes.OK).json({
+    success: true,
+    data: {
+      name: partner?.name,
+      phone: partner?.phone,
+      isAvailable: Boolean(partner?.deliveryPartnerProfile?.isAvailable),
+    },
+  });
+});
+
 module.exports = {
+  getMyProfile,
   listPartners,
   createPartner,
   updateAvailability,

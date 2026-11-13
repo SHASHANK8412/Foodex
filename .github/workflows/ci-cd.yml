@@ -134,6 +134,37 @@ jobs:
           KAFKA_INTEGRATION_BROKERS: localhost:9092
         run: npx jest --runInBand kafka.integration
 
+  # Builds both production images and checks the compose file.
+  docker-images:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate compose file
+        env:
+          JWT_SECRET: ci-only-secret-0123456789abcdef0123456789
+          GRAPHQL_PERSISTED_SECRET: ci-only-persisted-secret
+        run: docker compose --profile data --profile batch --profile observability config --quiet
+
+      - name: Build API image
+        run: docker build -t foodex-api:ci backend
+
+      - name: Build web image
+        run: docker build -t foodex-web:ci frontend
+
+      - name: Smoke-test the API image
+        run: |
+          docker network create foodex-ci
+          docker run -d --name mongo --network foodex-ci mongo:7.0
+          docker run -d --name api --network foodex-ci -p 5000:5000             -e MONGO_URI=mongodb://mongo:27017/foodex             -e JWT_SECRET=ci-only-secret-0123456789abcdef0123456789             -e GRAPHQL_PERSISTED_SECRET=ci-only-persisted-secret             -e SEED_DEMO_DATA=true foodex-api:ci
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://localhost:5000/api/health/ready; then exit 0; fi
+            sleep 2
+          done
+          docker logs api
+          exit 1
+
   deploy:
     if: github.ref == 'refs/heads/main'
     needs: test

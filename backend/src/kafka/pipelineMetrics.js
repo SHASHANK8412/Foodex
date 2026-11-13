@@ -1,6 +1,8 @@
 // In-memory counters for the event pipeline, exposed on the admin Data Pipeline page.
 // They describe this API process only; broker-side totals come from the Kafka admin client.
 
+const prometheus = require("../observability/metrics");
+
 const BUCKET_MS = 10 * 1000;
 const MAX_BUCKETS = 30; // five minutes of throughput history
 
@@ -36,6 +38,7 @@ const recordThroughput = (count) => {
 };
 
 const recordProduced = (topic, transport, count = 1) => {
+  prometheus.eventsPublished.inc({ topic, transport: transport === "kafka" ? "kafka" : "in-process" }, count);
   const stats = topicStats(topic);
   stats.produced += count;
   stats.lastProducedAt = new Date().toISOString();
@@ -54,6 +57,7 @@ const recordFailure = (topic) => {
 };
 
 const recordDeadLetter = (topic) => {
+  prometheus.eventsDeadLettered.inc({ topic });
   topicStats(topic).deadLettered += 1;
 };
 

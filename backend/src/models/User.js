@@ -68,7 +68,10 @@ const userSchema = new mongoose.Schema(
 );
 
 userSchema.pre("save", async function hashPassword() {
-  if (!this.password && !this.googleId) {
+  // `password` is select: false, so a user loaded by a normal query has no
+  // password in memory. Only require a credential when creating the account;
+  // otherwise every later save (loyalty points, rider availability) would fail.
+  if (this.isNew && !this.password && !this.googleId) {
     throw new Error("Either password or googleId is required");
   }
 

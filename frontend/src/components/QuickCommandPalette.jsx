@@ -17,6 +17,8 @@ const QuickCommandPalette = () => {
       const isOpenShortcut = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k";
       if (isOpenShortcut) {
         event.preventDefault();
+        // A fresh search each time the palette opens.
+        setQuery("");
         setOpen((prev) => !prev);
         return;
       }
@@ -33,8 +35,6 @@ const QuickCommandPalette = () => {
   useEffect(() => {
     if (open) {
       setTimeout(() => inputRef.current?.focus(), 0);
-    } else {
-      setQuery("");
     }
   }, [open]);
 
@@ -158,7 +158,10 @@ const QuickCommandPalette = () => {
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setQuery("");
+          setOpen(true);
+        }}
         className="fixed bottom-5 left-5 z-40 hidden items-center gap-2 rounded-full border border-slate-300 bg-white/90 px-4 py-2 text-xs font-bold uppercase tracking-wide text-slate-700 shadow-lg backdrop-blur hover:border-rose-300 hover:text-rose-600 lg:flex dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-200"
       >
         Quick Actions

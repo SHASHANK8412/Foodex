@@ -5,7 +5,7 @@ import OfferBanners from "../components/OfferBanners";
 import OrderStatusTimeline from "../components/OrderStatusTimeline";
 import RestaurantCard from "../components/RestaurantCard";
 import { addToCart } from "../redux/slices/cartSlice";
-import { fetchOrders, fetchOrderById, setActiveOrderFromSocket } from "../redux/slices/orderSlice";
+import { fetchOrders, setActiveOrderFromSocket } from "../redux/slices/orderSlice";
 import { fetchRestaurants, fetchRestaurantById } from "../redux/slices/restaurantSlice";
 import { fetchAiRecommendations, fetchQuickReorder } from "../redux/slices/aiSlice";
 import { addToast } from "../redux/slices/uiSlice";

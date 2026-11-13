@@ -95,6 +95,10 @@ describe("event bus without a broker (in-process transport)", () => {
     expect(notifications.pushUserNotification).toHaveBeenCalledWith(
       expect.objectContaining({ userId: "u1", type: "order_created" })
     );
+    // Riders are assigned on payment, not on creation.
+    expect(delivery.autoAssignDeliveryPartner).not.toHaveBeenCalled();
+
+    await bus.publishEvent(KAFKA_TOPICS.ORDER_PAID, { orderId: "o1", userId: "u1" });
     expect(delivery.autoAssignDeliveryPartner).toHaveBeenCalledWith(
       expect.objectContaining({ orderId: "o1" })
     );

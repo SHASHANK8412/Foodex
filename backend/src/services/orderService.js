@@ -1,23 +1,22 @@
 const { StatusCodes } = require("http-status-codes");
 const crypto = require("crypto");
 const env = require("../config/env");
-const Restaurant = require("../models/Restaurant");
-const MenuItem = require("../models/MenuItem");
 const Order = require("../models/Order");
 const Payment = require("../models/Payment");
-const { ORDER_STATUS, PAYMENT_STATUS } = require("../constants/order");
+const { ORDER_STATUS, PAYMENT_STATUS, DELIVERY_PARTNER_STATUSES, canTransition } = require("../constants/order");
+const ROLES = require("../constants/roles");
 const KAFKA_TOPICS = require("../constants/kafkaTopics");
 const ApiError = require("../utils/ApiError");
 const { createRazorpayOrder, verifySignature, verifyWebhookSignature } = require("./paymentService");
 const { emitOrderUpdate, emitDeliveryLocation } = require("../sockets/socketManager");
 const { publishEvent } = require("../kafka");
 const { refreshRestaurantDemand } = require("./demandService");
+const pricingService = require("./pricingService");
+const metrics = require("../observability/metrics");
 const loyaltyService = require("./loyaltyService");
 const { smsQueue, pushNotificationQueue, analyticsQueue } = require("../queues");
 const { publishOrderStatusUpdate } = require("../graphql/subscriptionBus");
 
-const TAX_RATE = 0.05;
-const DELIVERY_FEE = 40;
 
 // Publishes the order's current status so downstream consumers (Spark, the data
 // lake) can rebuild the full order lifecycle, including actual delivery time.
@@ -60,7 +59,7 @@ const upsertPaymentTransaction = async ({
         lastEventAt: new Date(),
         metadata,
       },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
+      { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
     );
   } catch (_error) {
     // Payment tracking should not block order flow.
@@ -160,34 +159,16 @@ const ensureOrderDeliveryLocation = async (order) => {
   return order;
 };
 
-const createOrder = async ({ userId, restaurantId, items, deliveryAddress }) => {
-  const restaurant = await Restaurant.findById(restaurantId);
-  if (!restaurant || !restaurant.isOpen) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, "Restaurant unavailable");
+const createOrder = async ({ userId, restaurantId, items, deliveryAddress, couponCode }) => {
+  const priced = await pricingService.quote({ restaurantId, items, couponCode, userId });
+
+  // The customer saw the coupon as valid in the cart; if it no longer is (expired,
+  // already used), refuse rather than silently charge the full price.
+  if (priced.coupon && !priced.coupon.valid) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, priced.coupon.reason);
   }
 
-  const ids = items.map((item) => item.menuItemId);
-  const menuItems = await MenuItem.find({ _id: { $in: ids }, restaurant: restaurantId, isAvailable: true });
-
-  if (menuItems.length !== items.length) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, "Some menu items are unavailable");
-  }
-
-  const menuMap = new Map(menuItems.map((item) => [item._id.toString(), item]));
-
-  const orderItems = items.map((item) => {
-    const menuItem = menuMap.get(item.menuItemId);
-    return {
-      menuItem: menuItem._id,
-      name: menuItem.name,
-      quantity: item.quantity,
-      price: menuItem.price,
-    };
-  });
-
-  const subtotal = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const taxAmount = Number((subtotal * TAX_RATE).toFixed(2));
-  const totalAmount = Number((subtotal + taxAmount + DELIVERY_FEE).toFixed(2));
+  const { restaurant, lines: orderItems, subtotal, taxAmount, deliveryFee, totalAmount } = priced;
 
   const normalizedDeliveryAddress = await hydrateDeliveryAddressLocation(deliveryAddress);
 
@@ -197,8 +178,10 @@ const createOrder = async ({ userId, restaurantId, items, deliveryAddress }) => 
     items: orderItems,
     deliveryAddress: normalizedDeliveryAddress,
     subtotal,
+    couponCode: priced.coupon?.code,
+    discountAmount: priced.discount,
     taxAmount,
-    deliveryFee: DELIVERY_FEE,
+    deliveryFee,
     totalAmount,
     trackingEvents: [
       {
@@ -228,6 +211,9 @@ const createOrder = async ({ userId, restaurantId, items, deliveryAddress }) => 
     metadata: { source: "checkout_create" },
   });
 
+  metrics.ordersCreated.inc({ coupon: priced.coupon?.code ? "yes" : "no" });
+  metrics.orderValue.observe(totalAmount);
+
   const populated = await Order.findById(draftOrder._id).populate("restaurant", "name address.location");
   emitOrderUpdate(populated, "Order placed and payment initiated");
   await refreshRestaurantDemand(restaurantId);
@@ -239,6 +225,8 @@ const createOrder = async ({ userId, restaurantId, items, deliveryAddress }) => 
     restaurantName: restaurant.name,
     city: restaurant.address?.city || normalizedDeliveryAddress?.city || "",
     totalAmount,
+    couponCode: priced.coupon?.code || null,
+    discountAmount: priced.discount,
     itemCount: orderItems.reduce((sum, item) => sum + item.quantity, 0),
     items: orderItems.map((item) => ({
       menuItemId: String(item.menuItem),
@@ -292,6 +280,7 @@ const verifyOrderPayment = async ({ orderId, razorpayOrderId, razorpayPaymentId,
       });
 
   if (!isValid) {
+    metrics.paymentsVerified.inc({ outcome: "failed", source: "checkout" });
     order.paymentStatus = PAYMENT_STATUS.FAILED;
     await order.save();
     await upsertPaymentTransaction({
@@ -304,6 +293,7 @@ const verifyOrderPayment = async ({ orderId, razorpayOrderId, razorpayPaymentId,
     throw new ApiError(StatusCodes.BAD_REQUEST, "Payment verification failed");
   }
 
+  metrics.paymentsVerified.inc({ outcome: "paid", source: "checkout" });
   order.paymentStatus = PAYMENT_STATUS.PAID;
   order.status = ORDER_STATUS.CONFIRMED;
   order.razorpayOrderId = razorpayOrderId;
@@ -340,10 +330,25 @@ const verifyOrderPayment = async ({ orderId, razorpayOrderId, razorpayPaymentId,
   return populated;
 };
 
-const updateOrderStatus = async ({ orderId, status, actorId, note, location }) => {
+const updateOrderStatus = async ({ orderId, status, actorId, actorRole, note, location }) => {
   const order = await Order.findById(orderId);
   if (!order) {
     throw new ApiError(StatusCodes.NOT_FOUND, "Order not found");
+  }
+
+  // Delivery partners act only on their own deliveries, and only on the delivery
+  // steps; admins can make any move the lifecycle allows.
+  if (actorRole === ROLES.DELIVERY) {
+    if (String(order.deliveryPartner || "") !== String(actorId)) {
+      throw new ApiError(StatusCodes.FORBIDDEN, "This order is not assigned to you");
+    }
+    if (!DELIVERY_PARTNER_STATUSES.includes(status)) {
+      throw new ApiError(StatusCodes.FORBIDDEN, "Delivery partners can only mark orders picked up or delivered");
+    }
+  }
+
+  if (order.status !== status && !canTransition(order.status, status)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, `Cannot move an order from ${order.status} to ${status}`);
   }
 
   order.status = status;
@@ -414,10 +419,8 @@ const assignDeliveryPartner = async ({ orderId, deliveryPartnerId, actorId }) =>
     throw new ApiError(StatusCodes.NOT_FOUND, "Order not found");
   }
 
+  // As with automatic assignment, the rider marks the order picked up.
   order.deliveryPartner = deliveryPartnerId;
-  if (order.status === ORDER_STATUS.CONFIRMED || order.status === ORDER_STATUS.PREPARING) {
-    order.status = ORDER_STATUS.OUT_FOR_DELIVERY;
-  }
 
   order.trackingEvents.push({
     status: order.status,

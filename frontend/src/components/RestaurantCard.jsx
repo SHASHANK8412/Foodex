@@ -9,7 +9,8 @@ const RestaurantCard = ({ restaurant }) => {
   const isFavorite = favorites.includes(restaurant._id);
 
   const rating = restaurant.rating ?? 4.2;
-  const deliveryTime = restaurant.deliveryTime ?? "25-35 min";
+  const wait = Number(restaurant.estimatedWaitMinutes) || 20;
+  const deliveryTime = `${wait}-${wait + 10} min`;
   const tags = restaurant.cuisine?.slice(0, 3) || ["Popular", "Fast", "Fresh"];
   const demandLevel = restaurant.demandLevel || "low";
   const estimatedWaitMinutes = restaurant.estimatedWaitMinutes || 20;

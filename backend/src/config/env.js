@@ -63,7 +63,22 @@ const env = {
   cloudinaryApiKey: process.env.CLOUDINARY_API_KEY || "",
   cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET || "",
   graphqlPath: process.env.GRAPHQL_PATH || "/graphql",
+  metricsToken: process.env.METRICS_TOKEN || "",
   graphqlPersistedSecret: process.env.GRAPHQL_PERSISTED_SECRET || "foodex-persisted-secret",
 };
+
+// Refuse to run in production with secrets that are public in this repository.
+if (env.nodeEnv === "production") {
+  const weak = [];
+  if (!process.env.JWT_SECRET || env.jwtSecret === "change_this_secret" || env.jwtSecret.length < 32) {
+    weak.push("JWT_SECRET (set a random value of at least 32 characters)");
+  }
+  if (env.graphqlPersistedSecret === "foodex-persisted-secret") {
+    weak.push("GRAPHQL_PERSISTED_SECRET");
+  }
+  if (weak.length) {
+    throw new Error(`Insecure configuration for production: ${weak.join(", ")}`);
+  }
+}
 
 module.exports = env;

@@ -10,8 +10,21 @@ const RestaurantsPage = () => {
   const { token } = useSelector((state) => state.auth);
   const globalQuery = useSelector((state) => state.ui.searchQuery);
   const { restaurants: restaurantState, loading, error } = useSelector((state) => state.restaurants);
-  const [restaurantList, setRestaurantList] = useState([]);
-  const [query, setQuery] = useState("");
+  // Live demand from Socket.io, layered over the restaurants from the store.
+  const [demandById, setDemandById] = useState({});
+  const restaurantList = useMemo(
+    () => (restaurantState || []).map((restaurant) => ({ ...restaurant, ...(demandById[restaurant._id] || {}) })),
+    [restaurantState, demandById]
+  );
+  const restaurantIds = useMemo(() => (restaurantState || []).map((restaurant) => restaurant._id).join(","), [restaurantState]);
+
+  // The search box follows the navbar search; typing here edits it locally.
+  const [query, setQuery] = useState(globalQuery || "");
+  const [syncedQuery, setSyncedQuery] = useState(globalQuery);
+  if (globalQuery !== syncedQuery) {
+    setSyncedQuery(globalQuery);
+    setQuery(globalQuery || "");
+  }
   const [ratingFilter, setRatingFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [sortBy, setSortBy] = useState("recommended");
@@ -20,12 +33,10 @@ const RestaurantsPage = () => {
     dispatch(fetchRestaurants());
   }, [dispatch]);
 
+  // Subscribes once per set of restaurants. Demand updates change only
+  // demandById, so they no longer tear down and rebuild the subscriptions.
   useEffect(() => {
-    setRestaurantList(restaurantState || []);
-  }, [restaurantState]);
-
-  useEffect(() => {
-    if (!token || !restaurantList.length) {
+    if (!token || !restaurantIds) {
       return undefined;
     }
 
@@ -34,39 +45,29 @@ const RestaurantsPage = () => {
       return undefined;
     }
 
-    restaurantList.forEach((restaurant) => {
-      socket.emit("restaurant:subscribe", { restaurantId: restaurant._id });
-    });
+    const ids = restaurantIds.split(",");
+    ids.forEach((restaurantId) => socket.emit("restaurant:subscribe", { restaurantId }));
 
     const onDemandUpdate = (payload) => {
-      setRestaurantList((prev) =>
-        prev.map((restaurant) =>
-          restaurant._id === payload.restaurantId
-            ? {
-                ...restaurant,
-                demandLevel: payload.demandLevel,
-                activeOrders: payload.activeOrders,
-                estimatedWaitMinutes: payload.estimatedWaitMinutes,
-              }
-            : restaurant
-        )
-      );
+      if (!payload?.restaurantId) return;
+      setDemandById((previous) => ({
+        ...previous,
+        [payload.restaurantId]: {
+          demandLevel: payload.demandLevel,
+          activeOrders: payload.activeOrders,
+          estimatedWaitMinutes: payload.estimatedWaitMinutes,
+        },
+      }));
     };
 
     socket.on("demand:update", onDemandUpdate);
 
     return () => {
       const activeSocket = getSocket();
-      restaurantList.forEach((restaurant) => {
-        activeSocket?.emit("restaurant:unsubscribe", { restaurantId: restaurant._id });
-      });
+      ids.forEach((restaurantId) => activeSocket?.emit("restaurant:unsubscribe", { restaurantId }));
       activeSocket?.off("demand:update", onDemandUpdate);
     };
-  }, [token, restaurantList]);
-
-  useEffect(() => {
-    setQuery(globalQuery || "");
-  }, [globalQuery]);
+  }, [token, restaurantIds]);
 
   const filtered = useMemo(() => {
     const value = query.trim().toLowerCase();

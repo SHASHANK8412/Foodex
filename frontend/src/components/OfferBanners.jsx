@@ -1,17 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 
-const fallbackOffers = [
-  { title: "Flat 30% OFF", code: "FOODEX30", sub: "On orders above Rs.499" },
-  { title: "Free Delivery", code: "FASTFREE", sub: "Valid for first 3 orders" },
-  { title: "Midnight Cravings", code: "NIGHT20", sub: "20% OFF after 10PM" },
-];
-
 const OfferBanners = ({ offers = [] }) => {
   const [activeIndex, setActiveIndex] = useState(0);
 
-  const sourceOffers = useMemo(() => {
-    return offers.length ? offers : fallbackOffers;
-  }, [offers]);
+  const sourceOffers = useMemo(() => offers.slice(0, 6), [offers]);
 
   useEffect(() => {
     if (!sourceOffers.length) {
@@ -25,13 +17,17 @@ const OfferBanners = ({ offers = [] }) => {
     return () => clearInterval(interval);
   }, [sourceOffers]);
 
+  if (!sourceOffers.length) {
+    return null;
+  }
+
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-xs font-black uppercase tracking-[0.18em] text-rose-600">Live Offers</p>
         <p className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
           <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-          rotates automatically
+          use the code in your cart
         </p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

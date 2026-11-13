@@ -1,25 +1,29 @@
+import { lazy } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import HomePage from "./pages/HomePage";
-import RestaurantsPage from "./pages/RestaurantsPage";
-import RestaurantMenuPage from "./pages/RestaurantMenuPage";
-import CartPage from "./pages/CartPage";
-import CheckoutPage from "./pages/CheckoutPage";
-import OrderTrackingPage from "./pages/OrderTrackingPage";
-import OrderConfirmationPage from "./pages/OrderConfirmationPage";
-import LoginPage from "./pages/LoginPage";
-import RegisterPage from "./pages/RegisterPage";
-import AdminDashboardPage from "./pages/AdminDashboardPage";
-import AdminAnalyticsPage from "./pages/AdminAnalyticsPage";
-import AdminPaymentsPage from "./pages/AdminPaymentsPage";
-import AdminPipelinePage from "./pages/AdminPipelinePage";
-import DeliveryDashboardPage from "./pages/DeliveryDashboardPage";
-import RestaurantDashboardPage from "./pages/RestaurantDashboardPage";
-import MenuDashboardPage from "./pages/MenuDashboardPage";
-import UserDashboardPage from "./pages/UserDashboardPage";
-import GroupOrderPage from "./pages/GroupOrderPage";
 import NotFoundPage from "./pages/NotFoundPage";
+
+// Each page is its own chunk, loaded when first visited; the home page ships in
+// the main bundle so the first screen needs one request.
+const RestaurantsPage = lazy(() => import("./pages/RestaurantsPage"));
+const RestaurantMenuPage = lazy(() => import("./pages/RestaurantMenuPage"));
+const CartPage = lazy(() => import("./pages/CartPage"));
+const CheckoutPage = lazy(() => import("./pages/CheckoutPage"));
+const OrderTrackingPage = lazy(() => import("./pages/OrderTrackingPage"));
+const OrderConfirmationPage = lazy(() => import("./pages/OrderConfirmationPage"));
+const LoginPage = lazy(() => import("./pages/LoginPage"));
+const RegisterPage = lazy(() => import("./pages/RegisterPage"));
+const AdminDashboardPage = lazy(() => import("./pages/AdminDashboardPage"));
+const AdminAnalyticsPage = lazy(() => import("./pages/AdminAnalyticsPage"));
+const AdminPaymentsPage = lazy(() => import("./pages/AdminPaymentsPage"));
+const AdminPipelinePage = lazy(() => import("./pages/AdminPipelinePage"));
+const DeliveryDashboardPage = lazy(() => import("./pages/DeliveryDashboardPage"));
+const RestaurantDashboardPage = lazy(() => import("./pages/RestaurantDashboardPage"));
+const MenuDashboardPage = lazy(() => import("./pages/MenuDashboardPage"));
+const UserDashboardPage = lazy(() => import("./pages/UserDashboardPage"));
+const GroupOrderPage = lazy(() => import("./pages/GroupOrderPage"));
 
 const App = () => {
   return (

@@ -4,7 +4,7 @@ const MenuItem = require("../models/MenuItem");
 const Order = require("../models/Order");
 const Invoice = require("../models/Invoice");
 const ApiError = require("../utils/ApiError");
-const { ORDER_STATUS } = require("../constants/order");
+const { ORDER_STATUS, ORDER_TRANSITIONS } = require("../constants/order");
 const { emitOrderUpdate } = require("../sockets/socketManager");
 const { publishOrderStatusUpdate } = require("../graphql/subscriptionBus");
 const { ensureInvoiceForOrder } = require("./invoiceService");
@@ -19,13 +19,11 @@ const normalizeOwnerStatus = (status) => {
   return status;
 };
 
+// Restaurants run the kitchen side of the lifecycle; it is stricter than the
+// shared one, which also lets a rider pick up a confirmed order.
 const allowedTransitions = {
-  [ORDER_STATUS.PENDING]: [ORDER_STATUS.CONFIRMED, ORDER_STATUS.CANCELLED],
+  ...ORDER_TRANSITIONS,
   [ORDER_STATUS.CONFIRMED]: [ORDER_STATUS.PREPARING, ORDER_STATUS.CANCELLED],
-  [ORDER_STATUS.PREPARING]: [ORDER_STATUS.OUT_FOR_DELIVERY, ORDER_STATUS.CANCELLED],
-  [ORDER_STATUS.OUT_FOR_DELIVERY]: [ORDER_STATUS.DELIVERED],
-  [ORDER_STATUS.DELIVERED]: [],
-  [ORDER_STATUS.CANCELLED]: [],
 };
 
 const getOwnerRestaurants = async (ownerId) => {

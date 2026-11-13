@@ -10,6 +10,15 @@ const createOrderValidator = [
   body("deliveryAddress.city").notEmpty().withMessage("Delivery city is required"),
   body("deliveryAddress.state").notEmpty().withMessage("Delivery state is required"),
   body("deliveryAddress.postalCode").notEmpty().withMessage("Delivery postal code is required"),
+  body("couponCode").optional({ values: "falsy" }).isString().isLength({ max: 32 }),
+];
+
+const quoteValidator = [
+  body("restaurantId").isMongoId().withMessage("Valid restaurantId is required"),
+  body("items").isArray({ min: 1, max: 50 }).withMessage("Between 1 and 50 items are required"),
+  body("items.*.menuItemId").isMongoId().withMessage("Valid menuItemId is required"),
+  body("items.*.quantity").isInt({ gt: 0, lt: 51 }).withMessage("Quantity must be between 1 and 50"),
+  body("couponCode").optional({ values: "falsy" }).isString().isLength({ max: 32 }),
 ];
 
 const verifyPaymentValidator = [
@@ -33,6 +42,7 @@ const assignDeliveryValidator = [
 ];
 
 module.exports = {
+  quoteValidator,
   createOrderValidator,
   verifyPaymentValidator,
   updateStatusValidator,

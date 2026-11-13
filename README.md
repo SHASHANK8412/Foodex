@@ -1,9 +1,19 @@
 # Foodex
 
-Full-stack food delivery platform (React, Node.js, MongoDB) with an event-driven
-big data pipeline behind it: **Apache Kafka** for event streaming, **Apache Spark**
-(Structured Streaming and MLlib) for real-time and batch analytics, and a
-bronze/silver/gold data lake.
+Full-stack food delivery platform for four kinds of user: customers, restaurant
+owners, delivery riders and admins. React and Node.js on MongoDB, with
+real-time order tracking over Socket.io, server-side pricing with coupons,
+Razorpay payments, and an event-driven big data pipeline behind it:
+**Apache Kafka** for event streaming, **Apache Spark** (Structured Streaming
+and MLlib) for real-time and batch analytics, and a bronze/silver/gold data lake.
+
+```bash
+cp .env.example .env    # fill in the two secrets
+docker compose up -d --build
+```
+
+Then open http://localhost:3000 (demo logins below) and the API reference at
+http://localhost:5000/api/docs.
 
 ## Architecture
 
@@ -77,7 +87,34 @@ Spark did not produce it.
 - **Storage:** MongoDB (operational), Parquet data lake (analytical)
 - **Other:** Razorpay payments, Gemini AI ordering assistant, Docker Compose, GitHub Actions
 
-## Quick start (app only)
+## Engineering highlights
+
+- **One pricing engine for every screen.** The cart, checkout and order creation all price through `POST /api/pricing/quote`, which reads prices from the database and validates coupons (percentage with caps, flat, free delivery, first-order-only, per-user limits, and restaurant promotions). A customer is charged exactly what they were shown; previously the cart showed a discount that checkout silently dropped. (`backend/src/services/pricingService.js`)
+- **Order lifecycle as a state machine.** Every status change follows one transition table. Riders can only move orders assigned to them, and only through pick-up and delivery. Paid orders go to the available rider with the fewest active deliveries. (`backend/src/constants/order.js`, `deliveryAssignmentService.js`)
+- **Real-time, with authorisation.** Customers follow their order and the rider's live position over Socket.io. Only people allowed to see an order can join its room, and only its assigned rider can publish a location.
+- **Security.** Rate-limited login and registration, registration that cannot set a role or account state, production start-up refused with default secrets, credentials redacted from logs, and no internal error details in production responses.
+- **Observability.** Structured JSON logs with a request id on every request and in every error response; Prometheus metrics for latency per route, orders, order value, payments and events (`/metrics`); liveness and readiness checks (`/api/health/live`, `/api/health/ready`).
+- **Documented API.** OpenAPI 3.1 reference with Swagger UI at `/api/docs`.
+- **Tested.** 54 backend tests (3 of them run against a real Kafka broker in CI), including an end-to-end order-flow suite on a real in-memory MongoDB that covers pricing, coupons, payment, rider assignment, permissions and lifecycle rules, plus pytest suites for the Spark jobs.
+- **Fast first load.** Route-based code splitting cut the initial JavaScript bundle from 1,980 kB to 391 kB (588 kB to 118 kB gzipped); map, chart and PDF libraries load only on the pages that use them.
+- **Containerised.** Docker images for the API (non-root, health-checked) and the web app (nginx serving the build and proxying the API, GraphQL and WebSockets on one origin), with Compose profiles for the data platform and Prometheus.
+
+## Demo accounts
+
+Created automatically on first start (in development, or with `SEED_DEMO_DATA=true`):
+
+| Role | Email | Password |
+|---|---|---|
+| Admin | `admin@foodex.com` | `admin123` |
+| Customer | `user@foodex.com` | `user123` |
+| Delivery rider | `rider@foodex.com` | `rider123` |
+| Restaurant owner | `owner.indian@foodex.com` | `owner123` |
+
+Coupons to try in the cart: `FOODEX30` (30% off above ₹299, up to ₹150), `FASTFREE` (free delivery), `WELCOME100` (₹100 off a first order).
+
+Without Razorpay keys, checkout uses mock payments, so the whole flow works offline.
+
+## Running locally without Docker
 
 1. Start MongoDB locally.
 2. Backend:
@@ -85,7 +122,6 @@ Spark did not produce it.
    cd backend
    npm install
    cp .env.example .env   # fill in the values you need
-   npm run seed:demo
    npm run dev
    ```
 3. Frontend:
@@ -96,7 +132,6 @@ Spark did not produce it.
    ```
 
 Frontend: http://localhost:5173. Backend: http://localhost:5000.
-Demo admin: `admin@foodex.com` / `admin123` (created by the seed script).
 
 Sign in as the admin and open **Admin → Open data pipeline** (`/admin/pipeline`).
 With nothing else running it shows the in-process fallback; **Send traffic**
@@ -108,16 +143,18 @@ Requires Docker Desktop with about 6 GB of memory available to it.
 
 1. Start Kafka, Kafka UI, the Spark cluster and the streaming job:
    ```bash
-   docker compose up -d --build
+   docker compose --profile data up -d --build
    ```
    The first start downloads the Spark Kafka connector, so it needs internet access.
 
-2. Point the API at the broker. In `backend/.env`:
+2. Point the API at the broker. With the API in Docker, set `KAFKA_ENABLED=true`
+   in the root `.env` and run `docker compose up -d api`. With the API on the
+   host, set this in `backend/.env` and restart it:
    ```
    KAFKA_ENABLED=true
    KAFKA_BROKERS=localhost:9092
    ```
-   Restart the API. The log should say `Kafka connected (localhost:9092): 8 topics ready`.
+   The log should say `Kafka connected (...): 8 topics ready`.
 
 3. Generate traffic, from the admin page or from the command line:
    ```bash
@@ -147,30 +184,28 @@ Requires Docker Desktop with about 6 GB of memory available to it.
 | Kafka UI (topics, messages, consumer groups) | http://localhost:8080 |
 | Spark master | http://localhost:8081 |
 | Spark worker | http://localhost:8082 |
+| Prometheus (`--profile observability`) | http://localhost:9090 |
 
 More detail on the jobs, their inputs and outputs: [backend/analytics/README.md](backend/analytics/README.md).
 
 ## Tests
 
 ```bash
-cd backend && npm test                              # API, event bus (Kafka client mocked), Spark output serving
-cd frontend && npm test
+cd backend && npm test                              # 54 tests: API, order flow on in-memory MongoDB, event bus, Spark output
+cd frontend && npm test && npm run lint
 cd backend/analytics && python -m pytest tests      # generator; Spark tests need Java 17 and pyspark
 ```
 
-CI (`.github/workflows/ci-cd.yml`) additionally runs the Spark tests and the
-batch job end to end on generated data, and the event bus against a real Kafka
-broker.
+CI (`.github/workflows/ci-cd.yml`) also runs the Spark tests and the batch job
+on generated data, tests the event bus against a real Kafka broker, and builds
+and smoke-tests both Docker images.
 
 ## Application features
 
-- JWT authentication and role-based access control (customer, restaurant owner, delivery partner, admin)
-- Restaurant and menu browsing, cart, checkout, order history, group orders
-- Real-time order tracking with status timeline and Socket.io updates
-- Razorpay payment order and verification flow, admin payments dashboard
-- Restaurant owner dashboard, menu management, invoices
-- Gemini-powered AI order box with database-backed recommendations
-- Admin analytics, and the data pipeline page described above
+- **Customers:** browse and search restaurants with live demand and wait times, semantic dish search, a Gemini-powered ordering assistant, cart with coupons and "frequently ordered together" suggestions, Razorpay checkout, live order tracking with the rider's position, order history, loyalty points, group orders
+- **Restaurant owners:** incoming orders in real time, kitchen status updates, menu management with images, promotions, invoices
+- **Delivery riders:** availability toggle, assigned deliveries, pick-up and delivery steps, directions, live location sharing
+- **Admins:** operations dashboard, rider management, payments command centre, analytics, and the data pipeline page
 
 ## Describing this project on a resume
 
@@ -178,8 +213,17 @@ These describe what the code does. Fill in the bracketed numbers from your own
 runs (the admin page, Kafka UI and the Spark job's `_manifest.json` report
 them), and only claim what you have run yourself.
 
-- Built an event-driven food delivery platform (React, Node.js, MongoDB) that publishes order, payment, delivery and clickstream events to **Apache Kafka** topics, keyed by order and session, with consumer-group processing, retries, a dead-letter topic and idempotent handlers for at-least-once delivery.
+**Full stack**
+
+- Built a multi-role food delivery platform (React 19, Node.js/Express, MongoDB) for customers, restaurant owners, riders and admins, with real-time order tracking and live rider location over Socket.io and Razorpay payments.
+- Designed a server-side pricing engine used by cart, checkout and order creation, with validated coupons (percentage, flat, free delivery, first-order and per-user limits) and restaurant promotions, fixing a defect where checkout charged more than the cart displayed.
+- Modelled the order lifecycle as a state machine with role-based transitions, least-loaded rider assignment, and authorisation on Socket.io rooms and location updates.
+- Added production readiness: structured logging with request ids, Prometheus metrics, liveness/readiness probes, OpenAPI 3.1 docs, rate-limited authentication, and Docker images behind an nginx reverse proxy.
+- Wrote 54 backend tests, including an end-to-end order-flow suite on in-memory MongoDB that caught a model hook that made every user update fail; cut the initial JS bundle by 80% with route-based code splitting.
+
+**Data engineering**
+
+- Published order, payment, delivery and clickstream events to **Apache Kafka** topics keyed by order and session, with consumer-group processing, retries, a dead-letter topic and idempotent handlers for at-least-once delivery.
 - Implemented a **Spark Structured Streaming** job that aggregates Kafka events in 1-minute event-time windows with watermarking and feeds a live admin dashboard through Kafka and Socket.io, while landing raw events in a Parquet data lake.
-- Developed a **PySpark MLlib** batch pipeline over [N] orders: ALS collaborative filtering for restaurant recommendations, K-Means customer segmentation on RFM features, FP-Growth association rules, and a delivery-time regression (RMSE [x] min) whose coefficients the Node API serves without a Spark runtime.
-- Designed a bronze/silver/gold data lake and a serving layer with automatic fallback to MongoDB aggregates, so the application keeps working when the pipeline is offline.
+- Developed a **PySpark MLlib** batch pipeline over [N] orders: ALS collaborative filtering for restaurant recommendations, K-Means customer segmentation on RFM features, FP-Growth basket rules (served as cart suggestions), and a delivery-time regression (RMSE [x] min) whose coefficients the API serves without a Spark runtime.
 - Containerised Kafka (KRaft) and a Spark standalone cluster with Docker Compose, and added CI that runs the Spark jobs on generated data and tests the event bus against a real broker.

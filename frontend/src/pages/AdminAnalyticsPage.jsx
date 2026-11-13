@@ -76,8 +76,14 @@ const AdminAnalyticsPage = () => {
   }, []);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    let cancelled = false;
+    api.get("/admin/analytics").then((response) => {
+      if (!cancelled) setState(response.data.data);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!token) return;

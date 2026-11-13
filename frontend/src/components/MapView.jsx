@@ -19,15 +19,14 @@ const MapView = ({ order }) => {
   const restaurantLocation = order?.restaurant?.address?.location || order?.restaurant?.location || null;
   const userLocation = order?.deliveryAddress?.location || null;
 
-  useEffect(() => {
-    if (userLocation) {
-      setViewport((prev) => ({
-        ...prev,
-        latitude: userLocation.lat,
-        longitude: userLocation.lng,
-      }));
-    }
-  }, [userLocation]);
+  // Re-centre when the delivery location changes (adjusting state during render,
+  // rather than in an effect, avoids an extra render pass).
+  const locationKey = userLocation ? `${userLocation.lat},${userLocation.lng}` : "";
+  const [centeredOn, setCenteredOn] = useState("");
+  if (locationKey && locationKey !== centeredOn) {
+    setCenteredOn(locationKey);
+    setViewport((prev) => ({ ...prev, latitude: userLocation.lat, longitude: userLocation.lng }));
+  }
 
   useEffect(() => {
     const fetchRoute = async () => {

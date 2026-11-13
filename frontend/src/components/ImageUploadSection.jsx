@@ -9,7 +9,6 @@ const ImageUploadSection = ({
   preview 
 }) => {
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState('');
 
   const onDrop = useCallback((acceptedFiles, rejectedFiles) => {

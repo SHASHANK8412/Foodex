@@ -7,5 +7,6 @@ const router = express.Router();
 router.get("/recommendations", protect, analyticsController.getRecommendations);
 router.get("/demand/:restaurantId", analyticsController.getDemandPrediction);
 router.get("/delivery-estimate", analyticsController.getDeliveryEstimate);
+router.get("/frequently-bought-together", analyticsController.getFrequentlyBoughtTogether);
 
 module.exports = router;

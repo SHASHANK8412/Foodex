@@ -6,12 +6,13 @@ import { createOrder, verifyOrderPayment } from "../redux/slices/orderSlice";
 import { fetchDeliveryEstimate } from "../redux/slices/analyticsSlice";
 import { openRazorpayCheckout } from "../services/payment";
 import { formatCurrency } from "../utils/format";
+import useQuote from "../hooks/useQuote";
 import { track } from "../services/tracker";
 
 const CheckoutPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { items } = useSelector((state) => state.cart);
+  const { items, couponCode } = useSelector((state) => state.cart);
   const { user } = useSelector((state) => state.auth);
   const { loading, error } = useSelector((state) => state.orders);
   const { deliveryEstimate } = useSelector((state) => state.analytics);
@@ -19,8 +20,9 @@ const CheckoutPage = () => {
   const [address, setAddress] = useState({ line1: "", city: "", state: "", postalCode: "" });
   const [paymentError, setPaymentError] = useState("");
 
-  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const total = subtotal + subtotal * 0.05 + (items.length ? 40 : 0);
+  const { quote, error: quoteError } = useQuote(items, couponCode);
+  // An invalid coupon is not sent: the customer removes it in the cart first.
+  const appliedCoupon = quote?.coupon?.valid ? quote.coupon.code : undefined;
 
   const cartRestaurantId = items[0]?.restaurantId;
 
@@ -62,6 +64,7 @@ const CheckoutPage = () => {
       restaurantId,
       items: items.map((item) => ({ menuItemId: item.menuItemId, quantity: item.quantity })),
       deliveryAddress: address,
+      couponCode: appliedCoupon,
     };
 
     const result = await dispatch(createOrder(orderPayload));
@@ -168,7 +171,7 @@ const CheckoutPage = () => {
         )}
 
         <button
-          disabled={loading}
+          disabled={loading || !quote}
           type="submit"
           className="rounded-full bg-rose-500 px-6 py-3 text-sm font-bold text-white hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-60"
         >
@@ -178,8 +181,22 @@ const CheckoutPage = () => {
 
       <aside className="h-fit rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-bold text-slate-900">Payable amount</h2>
-        <p className="mt-4 text-3xl font-black text-slate-900">{formatCurrency(total)}</p>
-        <p className="mt-1 text-xs text-slate-500">Includes tax and delivery fee.</p>
+        <p className="mt-4 text-3xl font-black tabular-nums text-slate-900">
+          {quote ? formatCurrency(quote.totalAmount) : "…"}
+        </p>
+        <p className="mt-1 text-xs text-slate-500">
+          {quote
+            ? `Includes ${formatCurrency(quote.taxAmount)} tax and ${
+                quote.deliveryFee ? formatCurrency(quote.deliveryFee) + " delivery" : "free delivery"
+              }.`
+            : "Calculating…"}
+        </p>
+        {quote?.discount > 0 && (
+          <p className="mt-2 text-sm font-semibold text-emerald-700">
+            You save {formatCurrency(quote.discount)} with {quote.coupon.code}
+          </p>
+        )}
+        {quoteError && <p className="mt-2 text-sm font-semibold text-rose-700">{quoteError}</p>}
         {deliveryEstimate?.estimatedMinutes && (
           <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
             Estimated delivery time: {deliveryEstimate.estimatedMinutes} mins

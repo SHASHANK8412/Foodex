@@ -28,10 +28,11 @@ const Navbar = () => {
   const searchQuery = useSelector((state) => state.ui.searchQuery);
   const restaurants = useSelector((state) => state.restaurants.restaurants);
 
+  const userCity = user?.address?.city;
   const locationOptions = useMemo(() => {
     const set = new Set(["All Locations"]);
-    if (user?.address?.city) {
-      set.add(user.address.city);
+    if (userCity) {
+      set.add(userCity);
     }
     (restaurants || []).forEach((restaurant) => {
       if (restaurant.address?.city) {
@@ -39,7 +40,7 @@ const Navbar = () => {
       }
     });
     return Array.from(set);
-  }, [restaurants, user?.address?.city]);
+  }, [restaurants, userCity]);
 
   const handleLogout = () => {
     dispatch(logout());

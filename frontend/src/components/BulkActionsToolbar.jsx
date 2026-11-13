@@ -11,13 +11,11 @@ const BulkActionsToolbar = ({
   onClose,
 }) => {
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState('');
 
   if (selectedCount === 0) return null;
 
   const handleAssignCategory = (category) => {
     onAssignCategory(category);
-    setSelectedCategory('');
     setShowCategoryDropdown(false);
   };
 
