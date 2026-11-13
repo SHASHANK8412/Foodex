@@ -13,6 +13,7 @@ import RegisterPage from "./pages/RegisterPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import AdminAnalyticsPage from "./pages/AdminAnalyticsPage";
 import AdminPaymentsPage from "./pages/AdminPaymentsPage";
+import AdminPipelinePage from "./pages/AdminPipelinePage";
 import DeliveryDashboardPage from "./pages/DeliveryDashboardPage";
 import RestaurantDashboardPage from "./pages/RestaurantDashboardPage";
 import MenuDashboardPage from "./pages/MenuDashboardPage";
@@ -91,6 +92,14 @@ const App = () => {
           element={
             <ProtectedRoute roles={["admin"]}>
               <AdminPaymentsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="admin/pipeline"
+          element={
+            <ProtectedRoute roles={["admin"]}>
+              <AdminPipelinePage />
             </ProtectedRoute>
           }
         />

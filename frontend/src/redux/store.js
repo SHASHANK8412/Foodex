@@ -11,6 +11,7 @@ import wishlistReducer from "./slices/wishlistSlice";
 import aiReducer from "./slices/aiSlice";
 import menuReducer from "./slices/menuSlice";
 import partnerReducer from "./slices/partnerSlice";
+import { trackingMiddleware } from "../services/tracker";
 
 const store = configureStore({
   reducer: {
@@ -27,6 +28,7 @@ const store = configureStore({
     menu: menuReducer,
     partner: partnerReducer,
   },
+  middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(trackingMiddleware),
 });
 
 export default store;

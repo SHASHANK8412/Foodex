@@ -11,8 +11,8 @@ Production-oriented Node.js + Express backend for food delivery with MongoDB, JW
 - Razorpay payment order creation and verification
 - Delivery partner creation and assignment
 - Real-time order updates and live delivery location events via Socket.io
-- Apache Kafka event-driven workflow for order processing and notifications
-- Apache Spark analytics integration for recommendations, demand prediction, and delivery ETA
+- Apache Kafka event bus for orders, payments, delivery and clickstream, with retries and a dead-letter topic
+- Apache Spark (Structured Streaming and MLlib) for live metrics, recommendations, segments, demand and delivery ETA
 
 ## Folder Structure
 
@@ -70,64 +70,53 @@ Demo credentials:
 
 `/api`
 
-## Kafka Event-Driven Flow
+## Event bus (Kafka)
 
-When Kafka is enabled (`KAFKA_ENABLED=true`), order processing uses producers and consumers:
+Domain events are published through `src/kafka/`. With `KAFKA_ENABLED=true` they go to
+Kafka; otherwise the same handlers run inside the API process, so behaviour is the same
+either way.
 
-1. API creates an order and publishes `foodex.order.created`
-2. Kafka consumer triggers notification handling for order creation
-3. Kafka consumer attempts delivery partner assignment and emits `foodex.delivery.assigned`
-4. Payment verification publishes `foodex.order.paid`
-5. Kafka consumer sends payment success notifications and retries delivery assignment if pending
+1. Creating an order publishes `foodex.order.created` (with the order lines), keyed by order id
+2. A consumer group sends the notification and assigns a delivery partner, publishing `foodex.delivery.assigned`
+3. Payment verification (or the Razorpay webhook) publishes `foodex.order.paid`
+4. Every status change publishes `foodex.order.status`, including the delivery time once delivered
+5. Browser events posted to `POST /api/events` are published to `foodex.clickstream`
+6. Spark Structured Streaming publishes windowed metrics to `foodex.analytics.realtime`, which the API consumes and pushes to admins over Socket.io (`pipeline:realtime`)
 
-### Kafka Topics
+Delivery is at-least-once: handlers are retried (`KAFKA_CONSUMER_MAX_RETRIES`), events that
+keep failing or cannot be parsed go to `foodex.dlq`, and redelivered events are skipped by `eventId`.
 
-- `foodex.order.created`
-- `foodex.order.paid`
-- `foodex.delivery.assigned`
-- `foodex.notification.requested`
-
-### Kafka Environment Variables
+### Kafka environment variables
 
 - `KAFKA_ENABLED=true|false`
 - `KAFKA_CLIENT_ID=foodex-backend`
 - `KAFKA_BROKERS=localhost:9092`
 - `KAFKA_GROUP_ID=foodex-order-processors`
+- `KAFKA_TOPIC_PARTITIONS=3`, `KAFKA_REPLICATION_FACTOR=1`, `KAFKA_CONSUMER_MAX_RETRIES=3`
 
-## Spark Analytics Integration
+## Spark analytics
 
-Spark-generated features are served through analytics APIs and consumed by the MERN frontend.
+The Spark jobs live in `analytics/` (see `analytics/README.md`). The API serves their output
+from `ANALYTICS_OUTPUT_DIR` and falls back to MongoDB aggregates when a dataset is missing;
+each response says which source answered.
 
-### Analytics Endpoints
+- `GET /api/analytics/recommendations` (auth required): ALS recommendations
+- `GET /api/analytics/demand/:restaurantId`: expected orders per hour
+- `GET /api/analytics/delivery-estimate?distanceKm=4&itemCount=2&hourOfDay=18`: regression model
+- `GET /api/pipeline/status`, `/realtime`, `/insights` (admin): pipeline state, live windows, batch insights
+- `POST /api/pipeline/simulate` (admin): publish simulated traffic through the event bus
 
-- `GET /api/analytics/recommendations` (auth required)
-- `GET /api/analytics/demand/:restaurantId`
-- `GET /api/analytics/delivery-estimate?distanceKm=4&itemCount=2&hourOfDay=18`
+Scripts:
 
-### Analytics Environment Variable
+- `npm run analytics:export`: write orders and the catalogue from MongoDB to `analytics/data/`
+- `npm run kafka:load -- --orders 20000`: publish synthetic events through the event bus
 
-- `ANALYTICS_OUTPUT_DIR=./analytics/output`
+Environment: `ANALYTICS_OUTPUT_DIR`, `ANALYTICS_DATA_DIR`, `ANALYTICS_LAKE_DIR` (defaults under `./analytics`).
 
-### Gemini AI Environment Variables
+### Gemini AI environment variables
 
 - `GOOGLE_GEMINI_API_KEY=...`
 - `GOOGLE_GEMINI_MODEL=gemini-2.0-flash`
-
-### Spark Pipeline
-
-Run the Spark feature job from `backend/analytics/`:
-
-```bash
-spark-submit analytics/spark_foodex_features.py --input analytics/sample/orders.json --output analytics/output --format json
-```
-
-Output files used by backend service:
-
-- `recommendations.json`
-- `demand_forecast.json`
-- `delivery_eta_model.json`
-
-If files are not present, backend falls back to MongoDB aggregate/heuristic calculations.
 
 ## Key Endpoints
 

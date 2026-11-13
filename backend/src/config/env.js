@@ -44,8 +44,13 @@ const env = {
   kafkaClientId: process.env.KAFKA_CLIENT_ID || "foodex-backend",
   kafkaBrokers: process.env.KAFKA_BROKERS || "localhost:9092",
   kafkaGroupId: process.env.KAFKA_GROUP_ID || "foodex-order-processors",
+  kafkaTopicPartitions: Number(process.env.KAFKA_TOPIC_PARTITIONS || 3),
+  kafkaReplicationFactor: Number(process.env.KAFKA_REPLICATION_FACTOR || 1),
+  kafkaConsumerMaxRetries: Math.max(1, Number(process.env.KAFKA_CONSUMER_MAX_RETRIES || 3)),
   analyticsOutputDir:
     process.env.ANALYTICS_OUTPUT_DIR || path.join(process.cwd(), "analytics", "output"),
+  analyticsDataDir: process.env.ANALYTICS_DATA_DIR || path.join(process.cwd(), "analytics", "data"),
+  analyticsLakeDir: process.env.ANALYTICS_LAKE_DIR || path.join(process.cwd(), "analytics", "lake"),
   redisEnabled: process.env.REDIS_ENABLED === "true",
   redisUrl: process.env.REDIS_URL || "redis://127.0.0.1:6379",
   mapboxAccessToken: process.env.MAPBOX_ACCESS_TOKEN || "",

@@ -9,6 +9,7 @@ import RecommendationCarousel from "../components/RecommendationCarousel";
 import { fetchAiRecommendations } from "../redux/slices/aiSlice";
 import { addToast } from "../redux/slices/uiSlice";
 import api from "../services/api";
+import { track } from "../services/tracker";
 
 const RestaurantMenuPage = () => {
   const { restaurantId } = useParams();
@@ -23,6 +24,7 @@ const RestaurantMenuPage = () => {
     dispatch(fetchRestaurantById(restaurantId));
     dispatch(fetchDemandForecast(restaurantId));
     dispatch(fetchAiRecommendations(restaurantId));
+    track("restaurant_view", { restaurantId, path: `/restaurants/${restaurantId}` });
   }, [dispatch, restaurantId]);
 
   if (loading) {

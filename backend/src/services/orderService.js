@@ -15,46 +15,25 @@ const { refreshRestaurantDemand } = require("./demandService");
 const loyaltyService = require("./loyaltyService");
 const { smsQueue, pushNotificationQueue, analyticsQueue } = require("../queues");
 const { publishOrderStatusUpdate } = require("../graphql/subscriptionBus");
-const { pushUserNotification } = require("./notificationService");
-const { autoAssignDeliveryPartner } = require("./deliveryAssignmentService");
 
 const TAX_RATE = 0.05;
 const DELIVERY_FEE = 40;
 
-const processOrderEventFallback = async ({ eventType, orderId, userId }) => {
-  if (env.kafkaEnabled) {
-    return;
-  }
+// Publishes the order's current status so downstream consumers (Spark, the data
+// lake) can rebuild the full order lifecycle, including actual delivery time.
+const publishOrderStatusEvent = async (order) => {
+  const createdAt = order.createdAt ? new Date(order.createdAt).getTime() : null;
+  const isDelivered = order.status === ORDER_STATUS.DELIVERED;
 
-  if (eventType === KAFKA_TOPICS.ORDER_CREATED) {
-    await pushUserNotification({
-      userId,
-      type: "order_created",
-      title: "Order placed",
-      message: `Your order #${orderId} has been placed successfully`,
-      meta: { orderId },
-    });
-
-    await autoAssignDeliveryPartner({
-      orderId,
-      source: "direct_fallback_order_created",
-    });
-  }
-
-  if (eventType === KAFKA_TOPICS.ORDER_PAID) {
-    await pushUserNotification({
-      userId,
-      type: "payment_success",
-      title: "Payment successful",
-      message: `Payment confirmed for order #${orderId}`,
-      meta: { orderId },
-    });
-
-    await autoAssignDeliveryPartner({
-      orderId,
-      source: "direct_fallback_order_paid",
-    });
-  }
+  await publishEvent(KAFKA_TOPICS.ORDER_STATUS_CHANGED, {
+    orderId: String(order._id),
+    userId: String(order.user?._id || order.user),
+    restaurantId: String(order.restaurant?._id || order.restaurant),
+    status: order.status,
+    totalAmount: order.totalAmount,
+    deliveryMinutes:
+      isDelivered && createdAt ? Number(((Date.now() - createdAt) / 60000).toFixed(1)) : null,
+  });
 };
 
 const upsertPaymentTransaction = async ({
@@ -257,14 +236,17 @@ const createOrder = async ({ userId, restaurantId, items, deliveryAddress }) => 
     orderId: String(populated._id),
     userId: String(userId),
     restaurantId: String(restaurantId),
+    restaurantName: restaurant.name,
+    city: restaurant.address?.city || normalizedDeliveryAddress?.city || "",
     totalAmount,
+    itemCount: orderItems.reduce((sum, item) => sum + item.quantity, 0),
+    items: orderItems.map((item) => ({
+      menuItemId: String(item.menuItem),
+      name: item.name,
+      quantity: item.quantity,
+      price: item.price,
+    })),
     paymentStatus: PAYMENT_STATUS.PENDING,
-  });
-
-  await processOrderEventFallback({
-    eventType: KAFKA_TOPICS.ORDER_CREATED,
-    orderId: String(populated._id),
-    userId: String(userId),
   });
 
   return {
@@ -355,12 +337,6 @@ const verifyOrderPayment = async ({ orderId, razorpayOrderId, razorpayPaymentId,
     paymentStatus: PAYMENT_STATUS.PAID,
   });
 
-  await processOrderEventFallback({
-    eventType: KAFKA_TOPICS.ORDER_PAID,
-    orderId: String(populated._id),
-    userId: String(populated.user?._id || populated.user),
-  });
-
   return populated;
 };
 
@@ -392,6 +368,7 @@ const updateOrderStatus = async ({ orderId, status, actorId, note, location }) =
 
   emitOrderUpdate(populated, note || "Order status changed");
   await publishOrderStatusUpdate(populated);
+  await publishOrderStatusEvent(populated);
 
   // --- Enqueue Notifications and Analytics ---
   analyticsQueue.add({
@@ -457,6 +434,15 @@ const assignDeliveryPartner = async ({ orderId, deliveryPartnerId, actorId }) =>
 
   emitOrderUpdate(populated, "Delivery partner assigned");
   await refreshRestaurantDemand(populated.restaurant?._id || populated.restaurant);
+
+  await publishEvent(KAFKA_TOPICS.DELIVERY_ASSIGNED, {
+    orderId: String(populated._id),
+    userId: String(populated.user?._id || populated.user),
+    restaurantId: String(populated.restaurant?._id || populated.restaurant),
+    deliveryPartnerId: String(deliveryPartnerId),
+    sourceEvent: "manual_assignment",
+  });
+
   return populated;
 };
 
@@ -633,12 +619,6 @@ const processRazorpayWebhook = async ({ rawBody, signature }) => {
         totalAmount: populated.totalAmount,
         paymentStatus: PAYMENT_STATUS.PAID,
       });
-
-      await processOrderEventFallback({
-        eventType: KAFKA_TOPICS.ORDER_PAID,
-        orderId: String(populated._id),
-        userId: String(populated.user?._id || populated.user),
-      });
     }
 
     return { processed: true, event, orderId: String(order._id) };
@@ -674,6 +654,7 @@ const processRazorpayWebhook = async ({ rawBody, signature }) => {
 };
 
 module.exports = {
+  publishOrderStatusEvent,
   createOrder,
   verifyOrderPayment,
   updateOrderStatus,

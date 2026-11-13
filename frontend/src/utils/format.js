@@ -17,3 +17,7 @@ export const formatDateTime = (value) => {
     timeStyle: "short",
   }).format(new Date(value));
 };
+
+const numberFormat = new Intl.NumberFormat("en-IN");
+
+export const formatNumber = (value) => numberFormat.format(Number(value || 0));

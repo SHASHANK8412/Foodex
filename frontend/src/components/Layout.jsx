@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 import { fetchMe } from "../redux/slices/authSlice";
@@ -8,11 +8,17 @@ import ToastContainer from "./ToastContainer";
 import FloatingAIChatWidget from "./FloatingAIChatWidget";
 import InstallPrompt from "./InstallPrompt";
 import QuickCommandPalette from "./QuickCommandPalette";
+import { track } from "../services/tracker";
 
 const Layout = () => {
   const dispatch = useDispatch();
   const { token } = useSelector((state) => state.auth);
   const mode = useSelector((state) => state.theme.mode);
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    track("page_view", { path: pathname });
+  }, [pathname]);
 
   useEffect(() => {
     if (token) {

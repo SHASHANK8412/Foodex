@@ -6,6 +6,7 @@ import { createOrder, verifyOrderPayment } from "../redux/slices/orderSlice";
 import { fetchDeliveryEstimate } from "../redux/slices/analyticsSlice";
 import { openRazorpayCheckout } from "../services/payment";
 import { formatCurrency } from "../utils/format";
+import { track } from "../services/tracker";
 
 const CheckoutPage = () => {
   const dispatch = useDispatch();
@@ -20,6 +21,14 @@ const CheckoutPage = () => {
 
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const total = subtotal + subtotal * 0.05 + (items.length ? 40 : 0);
+
+  const cartRestaurantId = items[0]?.restaurantId;
+
+  useEffect(() => {
+    if (cartRestaurantId) {
+      track("checkout_started", { path: "/checkout", restaurantId: cartRestaurantId });
+    }
+  }, [cartRestaurantId]);
 
   useEffect(() => {
     if (!items.length) {

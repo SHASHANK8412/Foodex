@@ -40,3 +40,19 @@
     -webkit-line-clamp: 2;
   }
 }
+
+/* Chart colours for the admin Data Pipeline page: one validated series hue per
+   theme, plus quiet grid and axis inks. */
+.viz-root {
+  --viz-series: #2a78d6;
+  --viz-grid: #e2e8f0;
+  --viz-axis: #64748b;
+  --viz-surface: #ffffff;
+}
+
+.dark .viz-root {
+  --viz-series: #3987e5;
+  --viz-grid: #1e293b;
+  --viz-axis: #94a3b8;
+  --viz-surface: #0f172a;
+}

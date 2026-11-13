@@ -42,12 +42,24 @@ const AdminDashboardPage = () => {
       <header>
         <h1 className="text-3xl font-black tracking-tight text-slate-900">Admin dashboard</h1>
         <p className="text-sm text-slate-600">Manage operations, riders and order lifecycle.</p>
-        <div className="mt-3">
+        <div className="mt-3 flex flex-wrap gap-2">
           <Link
             to="/admin/payments"
             className="inline-flex rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-500 hover:text-slate-900"
           >
             Open payments command center
+          </Link>
+          <Link
+            to="/admin/analytics"
+            className="inline-flex rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-500 hover:text-slate-900"
+          >
+            Open analytics
+          </Link>
+          <Link
+            to="/admin/pipeline"
+            className="inline-flex rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-500 hover:text-slate-900"
+          >
+            Open data pipeline
           </Link>
         </div>
       </header>

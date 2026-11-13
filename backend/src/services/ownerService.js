@@ -200,6 +200,8 @@ const updateOwnerOrderStatus = async ({ ownerId, orderId, status, note }) => {
 
   emitOrderUpdate(updated, note || "Restaurant updated order status");
   await publishOrderStatusUpdate(updated);
+  // Required lazily: orderService and ownerService would otherwise import each other.
+  await require("./orderService").publishOrderStatusEvent(updated);
 
   return updated;
 };

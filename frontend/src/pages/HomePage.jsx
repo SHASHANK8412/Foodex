@@ -77,9 +77,9 @@ const HomePage = () => {
         accent: "from-emerald-500/20 to-cyan-400/20",
       },
       {
-        label: "Spark Insights",
+        label: "For You",
         value: String((recommendations || []).length).padStart(2, "0"),
-        hint: "data-ranked restaurants",
+        hint: "restaurants ranked for you",
         accent: "from-violet-500/20 to-fuchsia-400/20",
       },
       {
@@ -267,7 +267,9 @@ const HomePage = () => {
         <section className="space-y-4 rounded-3xl border border-orange-100 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-black text-slate-900 dark:text-slate-100">Recommended for you</h2>
-            <span className="text-xs font-semibold uppercase tracking-wide text-rose-600">Spark-powered</span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-rose-600">
+              {recommendations[0]?.source === "spark_als" ? "Spark ALS model" : "From your order history"}
+            </span>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {recommendations.slice(0, 6).map((item) => (
@@ -277,7 +279,9 @@ const HomePage = () => {
                 className="rounded-2xl border border-slate-200 p-4 transition hover:border-rose-300 hover:bg-rose-50 dark:border-slate-700 dark:hover:bg-slate-800"
               >
                 <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{item.restaurantName || "Recommended Restaurant"}</p>
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Score: {item.score}</p>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  {item.source === "spark_als" ? `Match score ${item.score}` : `Ordered ${item.score} time${item.score === 1 ? "" : "s"}`}
+                </p>
               </Link>
             ))}
           </div>

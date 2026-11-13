@@ -8,6 +8,8 @@
     "lint": "echo \"No linter configured\"",
     "seed": "node src/seeders/achievements.js",
     "seed:demo": "node src/seeders/demoData.js",
+    "analytics:export": "node src/scripts/exportAnalyticsData.js",
+    "kafka:load": "node src/scripts/produceLoad.js",
     "test": "jest --runInBand"
   },
   "keywords": [],

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { semanticSearchAi } from "../redux/slices/aiSlice";
 import { addToCart } from "../redux/slices/cartSlice";
+import { track } from "../services/tracker";
 
 const SemanticSearchPanel = ({ restaurantId }) => {
   const dispatch = useDispatch();
@@ -14,6 +15,7 @@ const SemanticSearchPanel = ({ restaurantId }) => {
       return;
     }
 
+    track("search", { query: query.trim(), restaurantId });
     dispatch(semanticSearchAi({ query: query.trim(), restaurantId }));
   };
 

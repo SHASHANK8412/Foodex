@@ -21,3 +21,13 @@ coverage/
 .DS_Store
 Thumbs.db
 .vscode/
+
+# Analytics pipeline: generated data, lake, Spark outputs
+backend/analytics/data/
+backend/analytics/lake/
+backend/analytics/output/
+backend/analytics/checkpoints/
+__pycache__/
+.pytest_cache/
+*.pyc
+.venv/

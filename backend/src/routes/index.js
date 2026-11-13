@@ -12,6 +12,8 @@ const menuRoutes = require("./menuRoutes");
 const adminPaymentsRoutes = require("./adminPaymentsRoutes");
 const reviewRoutes = require("./reviewRoutes");
 const groupOrderRoutes = require("./groupOrderRoutes");
+const pipelineRoutes = require("./pipelineRoutes");
+const eventRoutes = require("./eventRoutes");
 
 const router = express.Router();
 
@@ -36,5 +38,7 @@ router.use("/admin/payments", adminPaymentsRoutes);
 router.use("/menu", menuRoutes);
 router.use("/reviews", reviewRoutes);
 router.use("/group-orders", groupOrderRoutes);
+router.use("/pipeline", pipelineRoutes);
+router.use("/events", eventRoutes);
 
 module.exports = router;
