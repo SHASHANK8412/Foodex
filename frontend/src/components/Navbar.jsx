@@ -98,7 +98,7 @@ const Navbar = () => {
           <input
             value={searchQuery}
             onChange={(event) => dispatch(setSearchQuery(event.target.value))}
-            placeholder="Search restaurants or cuisine"
+            placeholder="Search restaurants or dishes"
             className="w-64 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none ring-orange-400 focus:ring dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
           />
         </div>

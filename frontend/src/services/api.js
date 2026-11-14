@@ -19,7 +19,12 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    const message = error.response?.data?.message || error.message || "Request failed";
+    // No response at all: the server is down or unreachable. Axios calls this
+    // "Network Error", which tells a customer nothing.
+    const unreachable = !error.response && error.code !== "ERR_CANCELED";
+    const message = unreachable
+      ? "We can't reach Foodex right now. Check your connection and try again."
+      : error.response?.data?.message || error.message || "Request failed";
     // Keep the status and details (e.g. which checks failed) for callers that show them.
     return Promise.reject(
       Object.assign(new Error(message), {

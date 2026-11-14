@@ -1,6 +1,7 @@
 const { StatusCodes } = require("http-status-codes");
 const asyncHandler = require("../utils/asyncHandler");
 const restaurantService = require("../services/restaurantService");
+const MenuItem = require("../models/MenuItem");
 const { estimateOrderEta } = require("../services/analyticsService");
 
 // Every restaurant carries the same delivery estimate checkout and the ordering
@@ -17,7 +18,21 @@ const createRestaurant = asyncHandler(async (req, res) => {
 
 const listRestaurants = asyncHandler(async (_req, res) => {
   const restaurants = await restaurantService.listRestaurants();
-  res.status(StatusCodes.OK).json({ success: true, data: restaurants.map(withDeliveryEstimate) });
+  const dishes = await MenuItem.aggregate([
+    { $match: { restaurant: { $in: restaurants.map((restaurant) => restaurant._id) }, isAvailable: true } },
+    { $group: { _id: "$restaurant", names: { $push: "$name" }, tags: { $push: "$tags" } } },
+  ]);
+  const dishesById = new Map(dishes.map((row) => [String(row._id), row]));
+
+  const data = restaurants.map((restaurant) => {
+    const row = dishesById.get(String(restaurant._id));
+    return {
+      ...withDeliveryEstimate(restaurant),
+      dishNames: row?.names || [],
+      dishTags: [...new Set((row?.tags || []).flat().filter(Boolean))],
+    };
+  });
+  res.status(StatusCodes.OK).json({ success: true, data });
 });
 
 const getRestaurant = asyncHandler(async (req, res) => {

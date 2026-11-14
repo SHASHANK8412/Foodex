@@ -76,7 +76,9 @@ const RestaurantsPage = () => {
       const inName = item.name?.toLowerCase().includes(value);
       const inCuisine = item.cuisine?.join(" ").toLowerCase().includes(value);
       const inCity = item.address?.city?.toLowerCase().includes(value);
-      const matchesQuery = !value || inName || inCuisine || inCity;
+      // Dishes too: "pizza" finds Pasta Street, whose cuisine is Italian.
+      const inDishes = [...(item.dishNames || []), ...(item.dishTags || [])].some((dish) => dish.toLowerCase().includes(value));
+      const matchesQuery = !value || inName || inCuisine || inCity || inDishes;
       const rating = item.rating ?? 4;
       const matchesRating = ratingFilter === "all" || rating >= Number(ratingFilter);
       const matchesCategory = categoryFilter === "all" || item.cuisine?.includes(categoryFilter);
@@ -115,7 +117,7 @@ const RestaurantsPage = () => {
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search by name, cuisine, city"
+            placeholder="Search restaurants, cuisines or dishes"
             className="w-full rounded-full border border-slate-300 bg-white px-4 py-2 text-sm outline-none ring-orange-400 transition focus:ring dark:border-slate-700 dark:bg-slate-900"
           />
           <select
@@ -150,11 +152,55 @@ const RestaurantsPage = () => {
         </div>
       </div>
 
-      {error && <p className="rounded-2xl bg-rose-50 p-6 text-sm font-semibold text-rose-700">{error}</p>}
+      {error && (
+        <div
+          role="alert"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-rose-50 p-6 text-sm font-semibold text-rose-700 dark:bg-rose-950 dark:text-rose-300"
+        >
+          <span>{error}</span>
+          <button
+            type="button"
+            onClick={() => dispatch(fetchRestaurants())}
+            disabled={loading}
+            className="rounded-full bg-rose-600 px-4 py-2 text-white hover:bg-rose-700 disabled:opacity-60"
+          >
+            {loading ? "Retrying…" : "Retry"}
+          </button>
+        </div>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {loading && Array.from({ length: 6 }).map((_, index) => <RestaurantCardSkeleton key={index} />)}
-        {!loading && filtered.map((restaurant) => <RestaurantCard key={restaurant._id} restaurant={restaurant} />)}
+        {!loading &&
+          filtered.map((restaurant) => (
+            <RestaurantCard
+              key={restaurant._id}
+              restaurant={restaurant}
+              matchedDishes={
+                query.trim()
+                  ? (restaurant.dishNames || []).filter((dish) => dish.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 3)
+                  : []
+              }
+            />
+          ))}
+        {!loading && !error && restaurantList.length > 0 && filtered.length === 0 && (
+          <div className="col-span-full rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center dark:border-slate-700 dark:bg-slate-900">
+            <p className="font-semibold text-slate-900 dark:text-slate-100">
+              {query.trim() ? `No restaurants or dishes match "${query.trim()}".` : "No restaurants match these filters."}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setQuery("");
+                setRatingFilter("all");
+                setCategoryFilter("all");
+              }}
+              className="mt-3 rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-200"
+            >
+              Clear search and filters
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

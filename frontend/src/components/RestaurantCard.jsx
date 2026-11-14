@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { toggleFavoriteRestaurant } from "../redux/slices/wishlistSlice";
 import { addToast } from "../redux/slices/uiSlice";
 
-const RestaurantCard = ({ restaurant }) => {
+const RestaurantCard = ({ restaurant, matchedDishes = [] }) => {
   const dispatch = useDispatch();
   const favorites = useSelector((state) => state.wishlist.restaurantIds);
   const isFavorite = favorites.includes(restaurant._id);
@@ -93,6 +93,9 @@ const RestaurantCard = ({ restaurant }) => {
           </span>
         </div>
         <p className="line-clamp-2 text-sm text-slate-600 dark:text-slate-300">{restaurant.description || "Fresh meals and comfort food."}</p>
+        {matchedDishes.length > 0 && (
+          <p className="text-xs font-semibold text-rose-700 dark:text-rose-300">Serves {matchedDishes.join(", ")}</p>
+        )}
         <div className="flex flex-wrap gap-2">
           {tags.map((tag) => (
             <span key={tag} className="rounded-full border border-orange-200 px-2 py-1 text-[11px] font-semibold text-orange-700 dark:border-slate-700 dark:text-orange-300">
