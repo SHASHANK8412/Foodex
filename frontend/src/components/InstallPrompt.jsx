@@ -26,7 +26,7 @@ const InstallPrompt = () => {
   if (!visible) return null;
 
   return (
-    <div className="fixed bottom-4 left-4 z-50 rounded-2xl bg-slate-900 text-white p-4 shadow-xl">
+    <div className="fixed bottom-20 left-4 z-50 lg:bottom-4 rounded-2xl bg-slate-900 text-white p-4 shadow-xl">
       <p className="text-sm mb-2">Install Foodex for full offline experience.</p>
       <button onClick={install} className="rounded-full bg-orange-500 px-4 py-2 text-sm font-semibold">Install App</button>
     </div>

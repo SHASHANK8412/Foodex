@@ -24,8 +24,8 @@ async function generateContent(prompt) {
       throw new Error("Gemini AI client is not initialized. Please check if GOOGLE_GEMINI_API_KEY is set.");
     }
 
-    // Use gemini-2.0-flash (latest available model)
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    // gemini-2.0-flash is retired for new API keys; the model is configurable.
+    const model = genAI.getGenerativeModel({ model: process.env.GOOGLE_GEMINI_MODEL || "gemini-3.5-flash-lite" });
 
     const result = await model.generateContent(prompt);
     const response = await result.response;

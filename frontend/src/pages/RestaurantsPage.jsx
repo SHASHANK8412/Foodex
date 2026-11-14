@@ -56,6 +56,7 @@ const RestaurantsPage = () => {
           demandLevel: payload.demandLevel,
           activeOrders: payload.activeOrders,
           estimatedWaitMinutes: payload.estimatedWaitMinutes,
+          ...(payload.deliveryMinutes ? { deliveryMinutes: payload.deliveryMinutes } : {}),
         },
       }));
     };
@@ -82,19 +83,19 @@ const RestaurantsPage = () => {
       return matchesQuery && matchesRating && matchesCategory;
     });
 
+    // Open restaurants always come before closed ones.
+    const openFirst = (compare) => (a, b) => (a.isOpen === false) - (b.isOpen === false) || compare(a, b);
+
     if (sortBy === "top_rated") {
-      return [...filteredItems].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
+      return [...filteredItems].sort(openFirst((a, b) => (b.rating ?? 0) - (a.rating ?? 0)));
     }
 
     if (sortBy === "fast_delivery") {
-      return [...filteredItems].sort((a, b) => {
-        const aTime = Number(String(a.deliveryTime || "30").split("-")[0]);
-        const bTime = Number(String(b.deliveryTime || "30").split("-")[0]);
-        return aTime - bTime;
-      });
+      return [...filteredItems].sort(openFirst((a, b) => (a.deliveryMinutes ?? 99) - (b.deliveryMinutes ?? 99)));
     }
 
-    return filteredItems;
+    // Recommended: open first, then rating.
+    return [...filteredItems].sort(openFirst((a, b) => (b.rating ?? 0) - (a.rating ?? 0)));
   }, [restaurantList, query, ratingFilter, categoryFilter, sortBy]);
 
   const cuisineOptions = useMemo(() => {

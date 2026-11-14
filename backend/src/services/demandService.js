@@ -2,7 +2,10 @@ const Order = require("../models/Order");
 const Restaurant = require("../models/Restaurant");
 const { emitDemandUpdate } = require("../sockets/socketManager");
 
-const ACTIVE_STATUSES = ["pending", "confirmed", "preparing", "out_for_delivery"];
+// Orders the kitchen is working on. Unpaid ("pending") orders are not: an
+// abandoned checkout must not make a restaurant look busy, and an order that
+// has left with the rider no longer takes kitchen time.
+const ACTIVE_STATUSES = ["confirmed", "preparing"];
 
 const computeDemand = (activeOrders, avgPrepMinutes = 22) => {
   let demandLevel = "low";

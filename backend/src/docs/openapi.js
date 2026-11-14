@@ -28,6 +28,7 @@ const spec = {
     { name: "Orders" },
     { name: "Delivery", description: "Delivery partner endpoints" },
     { name: "Analytics", description: "Features built by the Spark batch job, with MongoDB fallbacks" },
+    { name: "Agent", description: "AI ordering agent: proposals and confirmation" },
     { name: "Events", description: "Clickstream ingestion into Kafka" },
     { name: "Pipeline", description: "Admin: Kafka and Spark pipeline status" },
     { name: "Health" },
@@ -376,6 +377,53 @@ const spec = {
           { name: "hourOfDay", in: "query", schema: { type: "integer", minimum: 0, maximum: 23 } },
         ],
         responses: { 200: ok({ type: "object", properties: { estimatedMinutes: { type: "integer" }, source: { type: "string" } } }) },
+      },
+    },
+    "/agent/plan": {
+      post: {
+        tags: ["Agent"],
+        summary: "Plan a cart from a natural-language request",
+        description:
+          "The LLM agent extracts a structured spec (cross-checked against the text), searches menus, and proposes a cart; a deterministic validator checks budget, diet, spice, exclusions, party size, opening and delivery time, and failures go back to the agent to re-plan. Nothing is ordered: the result is a proposal. With `?stream=1` the steps arrive as Server-Sent Events, ending with a `result` event. Rate limited to 12 per 10 minutes per customer.",
+        security: bearer,
+        parameters: [{ name: "stream", in: "query", schema: { enum: ["1"] } }],
+        requestBody: body({
+          type: "object",
+          required: ["request"],
+          properties: { request: { type: "string", maxLength: 500, examples: ["Something spicy and veg for 3 people, under ₹600, delivered in 30 minutes"] } },
+        }),
+        responses: {
+          200: ok({
+            type: "object",
+            properties: {
+              id: ref("ObjectId"),
+              status: { enum: ["proposed", "declined", "failed"] },
+              engine: { type: "string", examples: ["groq", "gemini", "rules"] },
+              spec: { type: "object" },
+              corrections: { type: "array", items: { type: "object" }, description: "Where the LLM's reading was corrected from the request text" },
+              items: { type: "array", items: { type: "object" } },
+              quote: ref("Quote"),
+              checks: { type: "array", items: { type: "object", properties: { id: { type: "string" }, label: { type: "string" }, passed: { type: "boolean" }, detail: { type: "string" } } } },
+              trace: { type: "array", items: { type: "object" } },
+            },
+          }),
+          ...errors(400, 401, 429),
+        },
+      },
+    },
+    "/agent/proposals/{proposalId}": {
+      get: { tags: ["Agent"], summary: "A proposal the caller made", security: bearer, parameters: [idParam("proposalId")], responses: { 200: ok({ type: "object" }), ...errors(401, 404) } },
+    },
+    "/agent/proposals/{proposalId}/confirm": {
+      post: {
+        tags: ["Agent"],
+        summary: "Turn a proposal into an order (customer confirmation)",
+        description:
+          "The only way a proposal becomes an order. The cart is validated again; if it no longer meets the request (409 with the failed checks) or its price changed (409), nothing is ordered. Otherwise this creates the order and its Razorpay payment order, as `POST /orders` does. A proposal can be confirmed once; it expires after 30 minutes (410).",
+        security: bearer,
+        parameters: [idParam("proposalId")],
+        requestBody: body({ type: "object", required: ["deliveryAddress"], properties: { deliveryAddress: ref("Address") } }),
+        responses: { 201: ok({ type: "object" }, "Created"), ...errors(400, 401, 404, 409) },
       },
     },
     "/events": {

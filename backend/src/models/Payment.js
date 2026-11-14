@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const { PAYMENT_STATUS } = require("../constants/order");
+const { PAYMENT_STATUS, PAYMENT_METHODS } = require("../constants/order");
 
 const paymentSchema = new mongoose.Schema(
   {
@@ -16,6 +16,17 @@ const paymentSchema = new mongoose.Schema(
       enum: Object.values(PAYMENT_STATUS),
       default: PAYMENT_STATUS.PENDING,
       index: true,
+    },
+    // How the customer paid, from Razorpay's Payments API (or the choice made in mock mode).
+    method: { type: String, enum: PAYMENT_METHODS, index: true },
+    methodDetails: {
+      vpaMasked: String,
+      upiFlow: String,
+      cardNetwork: String,
+      cardLast4: String,
+      bank: String,
+      wallet: String,
+      simulated: Boolean,
     },
     paidAt: { type: Date },
     lastEventAt: { type: Date, default: Date.now },

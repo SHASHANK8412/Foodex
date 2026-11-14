@@ -1,26 +1,91 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import { Bike, CircleAlert, Phone } from "lucide-react";
 import { fetchOrderById, fetchOrders, setActiveOrderFromSocket } from "../redux/slices/orderSlice";
 import MapView from "../components/MapView";
 import OrderStatusTimeline from "../components/OrderStatusTimeline";
+import PaymentMethodPicker from "../components/PaymentMethodPicker";
+import api from "../services/api";
 import { connectSocket } from "../services/socket";
+import { payForOrder } from "../services/checkoutFlow";
+import { loadCheckoutDetails } from "../utils/checkoutDetails";
+import { PAYMENT_METHOD_LABELS } from "../utils/paymentMethods";
+import { ORDER_STATUS_LABELS } from "../utils/constants";
 import { formatCurrency, formatDateTime } from "../utils/format";
+
+const card = "rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900";
+
+const paidWith = (order) => {
+  if (order.paymentStatus !== "paid") return null;
+  const label = PAYMENT_METHOD_LABELS[order.paymentMethod];
+  if (!label) return "Paid online";
+  const detail = order.paymentDetails?.vpaMasked || (order.paymentDetails?.cardLast4 ? `•••• ${order.paymentDetails.cardLast4}` : "");
+  return `Paid with ${label}${detail ? ` (${detail})` : ""}${order.paymentDetails?.simulated ? ", test mode" : ""}`;
+};
+
+// For an order whose payment was cancelled or failed: pay for the same order.
+const PayNow = ({ order, user, onPaid }) => {
+  const dispatch = useDispatch();
+  const [method, setMethod] = useState(() => loadCheckoutDetails(user).method);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const pay = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const session = (await api.post(`/orders/${order._id}/payment-session`)).data.data;
+      const result = await payForOrder({
+        dispatch,
+        order: { ...order, ...session.order },
+        payment: session.payment,
+        user,
+        method,
+        contactPhone: order.contactPhone,
+      });
+      if (result.ok) onPaid();
+      else setError(result.error);
+    } catch (payError) {
+      setError(payError.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="rounded-3xl border border-amber-300 bg-amber-50 p-5 dark:border-amber-500/40 dark:bg-amber-500/10">
+      <h2 className="flex items-center gap-2 font-bold text-amber-900 dark:text-amber-200">
+        <CircleAlert size={18} aria-hidden="true" /> Payment pending
+      </h2>
+      <p className="mt-1 text-sm text-amber-900 dark:text-amber-200">
+        The restaurant starts cooking once you pay {formatCurrency(order.totalAmount)}.
+      </p>
+      <div className="mt-4 max-w-md">
+        <PaymentMethodPicker value={method} onChange={setMethod} compact />
+      </div>
+      {error && <p className="mt-3 text-sm font-semibold text-rose-700" role="alert">{error}</p>}
+      <button
+        type="button"
+        onClick={pay}
+        disabled={busy}
+        className="mt-4 rounded-full bg-rose-500 px-5 py-3 text-sm font-bold text-white hover:bg-rose-600 disabled:opacity-60"
+      >
+        {busy ? "Opening payment…" : `Pay ${formatCurrency(order.totalAmount)} with ${PAYMENT_METHOD_LABELS[method]}`}
+      </button>
+    </section>
+  );
+};
 
 const OrderTrackingPage = () => {
   const dispatch = useDispatch();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const orderId = searchParams.get("orderId");
-  const { token } = useSelector((state) => state.auth);
+  const { token, user } = useSelector((state) => state.auth);
   const { orders, activeOrder, loading } = useSelector((state) => state.orders);
   // Positions pushed by the rider over Socket.io; before the first one arrives,
   // the latest location recorded on the order is shown.
   const [socketLocation, setLiveLocation] = useState(null);
-  const [chatInput, setChatInput] = useState("");
-  const [chatMessages, setChatMessages] = useState([
-    { from: "delivery", text: "Hi, I picked up your order and I am on my way." },
-    { from: "customer", text: "Great, please call once you reach the gate." },
-  ]);
 
   useEffect(() => {
     dispatch(fetchOrders());
@@ -32,7 +97,7 @@ const OrderTrackingPage = () => {
     }
   }, [dispatch, orderId]);
 
-  const currentOrder = activeOrder || orders[0];
+  const currentOrder = (orderId && activeOrder?._id === orderId ? activeOrder : null) || activeOrder || orders[0];
   const activeRoomOrderId = orderId || currentOrder?._id;
 
   useEffect(() => {
@@ -53,12 +118,6 @@ const OrderTrackingPage = () => {
       }
     };
 
-    const onOrderSnapshot = (payload) => {
-      if (payload?.order) {
-        dispatch(setActiveOrderFromSocket(payload.order));
-      }
-    };
-
     const onDeliveryLocation = (payload) => {
       if (payload?.orderId === activeRoomOrderId && payload?.location) {
         setLiveLocation(payload.location);
@@ -66,13 +125,13 @@ const OrderTrackingPage = () => {
     };
 
     socket.on("order:update", onOrderUpdate);
-    socket.on("order:snapshot", onOrderSnapshot);
+    socket.on("order:snapshot", onOrderUpdate);
     socket.on("delivery:location", onDeliveryLocation);
 
     return () => {
       socket.emit("order:leave", { orderId: activeRoomOrderId });
       socket.off("order:update", onOrderUpdate);
-      socket.off("order:snapshot", onOrderSnapshot);
+      socket.off("order:snapshot", onOrderUpdate);
       socket.off("delivery:location", onDeliveryLocation);
     };
   }, [token, activeRoomOrderId, dispatch]);
@@ -85,141 +144,146 @@ const OrderTrackingPage = () => {
     [currentOrder]
   );
   const liveLocation = socketLocation || recordedLocation;
-  const etaProgress = useMemo(() => {
-    const statusMap = {
-      pending: 15,
-      confirmed: 30,
-      preparing: 55,
-      out_for_delivery: 85,
-      delivered: 100,
-    };
-    return statusMap[currentOrder?.status] || 0;
-  }, [currentOrder?.status]);
 
-  const sendChat = (event) => {
-    event.preventDefault();
-    if (!chatInput.trim()) {
-      return;
-    }
-
-    setChatMessages((prev) => [...prev, { from: "customer", text: chatInput.trim() }]);
-    setChatInput("");
+  const refresh = () => {
+    if (currentOrder?._id) dispatch(fetchOrderById(currentOrder._id));
+    dispatch(fetchOrders());
   };
+
+  if (loading && !currentOrder) {
+    return <p className={card}>Loading your orders…</p>;
+  }
+
+  if (!currentOrder) {
+    return (
+      <div className={`${card} text-center`}>
+        <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100">No orders yet</h1>
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">When you order, you can follow it here in real time.</p>
+        <Link to="/restaurants" className="mt-4 inline-flex rounded-full bg-slate-900 px-5 py-3 text-sm font-bold text-white">
+          Browse restaurants
+        </Link>
+      </div>
+    );
+  }
+
+  const rider = currentOrder.deliveryPartner && typeof currentOrder.deliveryPartner === "object" ? currentOrder.deliveryPartner : null;
+  const isOwnOrder = String(currentOrder.user?._id || currentOrder.user) === String(user?.id || user?._id);
+  const unpaid = isOwnOrder && currentOrder.status === "pending" && currentOrder.paymentStatus !== "paid";
+  const hasMap =
+    (currentOrder.restaurant?.address?.location || currentOrder.restaurant?.location) && currentOrder.deliveryAddress?.location;
+  const otherOrders = orders.filter((order) => order._id !== currentOrder._id).slice(0, 5);
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-slate-100">Order tracking</h1>
-        <p className="text-sm text-slate-600 dark:text-slate-300">Watch status changes in real time.</p>
-      </div>
-
-      {loading && <p className="rounded-2xl bg-white p-6 dark:bg-slate-900">Loading orders...</p>}
-
-      {currentOrder ? (
-        <section className="space-y-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Order ID</p>
-              <p className="font-mono text-sm font-semibold text-slate-900 dark:text-slate-100">{currentOrder._id}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Total</p>
-              <p className="text-xl font-black text-slate-900 dark:text-slate-100">{formatCurrency(currentOrder.totalAmount)}</p>
-            </div>
+      <header className={card}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Order #{currentOrder.shortId}</p>
+            <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+              {currentOrder.restaurant?.name || "Your order"}
+            </h1>
+            <p className="text-sm text-slate-600 dark:text-slate-400">Placed {formatDateTime(currentOrder.createdAt)}</p>
           </div>
+          <div className="text-right">
+            <p className="text-2xl font-black tabular-nums text-slate-900 dark:text-slate-100">{formatCurrency(currentOrder.totalAmount)}</p>
+            <p className="text-xs text-slate-600 dark:text-slate-400">{paidWith(currentOrder) || (currentOrder.paymentStatus === "failed" ? "Payment failed" : "Not paid yet")}</p>
+          </div>
+        </div>
+        <div className="mt-5">
+          {currentOrder.status === "cancelled" ? (
+            <p className="rounded-xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">This order was cancelled.</p>
+          ) : (
+            <OrderStatusTimeline status={currentOrder.status} />
+          )}
+        </div>
+      </header>
 
-          <div className="container mx-auto py-8 px-4">
-            <div className="flex flex-col lg:flex-row gap-8">
-              <div className="w-full lg:w-2/3 flex flex-col gap-6">
-                {currentOrder && (
-                  <>
-                    <div className="rounded-lg bg-white p-6 shadow-md">
-                      <h2 className="mb-4 text-2xl font-bold text-slate-900">Live Tracking</h2>
-                      {(currentOrder.restaurant?.address?.location || currentOrder.restaurant?.location) &&
-                      currentOrder.deliveryAddress?.location ? (
-                        <MapView order={currentOrder} />
-                      ) : (
-                        <p className="text-sm font-medium text-slate-700">Location data not available for map view.</p>
-                      )}
-                    </div>
+      {unpaid && <PayNow order={currentOrder} user={user} onPaid={refresh} />}
 
-                    <div className="rounded-lg bg-white p-6 shadow-md">
-                      <h2 className="mb-4 text-2xl font-bold text-slate-900">Order Status</h2>
-                      <OrderStatusTimeline events={currentOrder.trackingEvents} />
-                    </div>
-                  </>
+      <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+        <section className={card}>
+          <h2 className="mb-3 text-lg font-bold text-slate-900 dark:text-slate-100">Live tracking</h2>
+          {hasMap ? (
+            <MapView order={currentOrder} />
+          ) : (
+            <p className="text-sm text-slate-600 dark:text-slate-400">The map appears once the delivery address has a location.</p>
+          )}
+          {liveLocation && currentOrder.status === "out_for_delivery" && (
+            <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">Rider location updated live.</p>
+          )}
+        </section>
+
+        <aside className="space-y-6">
+          <section className={card}>
+            <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900 dark:text-slate-100">
+              <Bike size={18} aria-hidden="true" /> Delivery partner
+            </h2>
+            {rider ? (
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="font-semibold text-slate-900 dark:text-slate-100">{rider.name}</p>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">{ORDER_STATUS_LABELS[currentOrder.status]}</p>
+                </div>
+                {rider.phone && (
+                  <a
+                    href={`tel:${rider.phone}`}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-800 dark:border-slate-700 dark:text-slate-200"
+                  >
+                    <Phone size={14} aria-hidden="true" /> Call
+                  </a>
                 )}
               </div>
-            </div>
-          </div>
+            ) : (
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                {currentOrder.paymentStatus === "paid" ? "A rider is assigned as soon as one is free." : "A rider is assigned once the order is paid."}
+              </p>
+            )}
+          </section>
 
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800">
-            <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              <span>Live map</span>
-              <span>{etaProgress}% complete</span>
-            </div>
-            <div className="mt-3 h-40 overflow-hidden rounded-xl bg-[linear-gradient(130deg,#e2e8f0,#f8fafc)] p-3 dark:bg-[linear-gradient(130deg,#1e293b,#0f172a)]">
-              <div className="relative h-full w-full rounded-lg border border-dashed border-slate-300 dark:border-slate-600">
-                <div className="absolute left-3 top-6 h-2 w-2 rounded-full bg-emerald-500" />
-                <div className="absolute right-8 bottom-6 h-2 w-2 rounded-full bg-rose-500" />
-                <div
-                  className="absolute top-1/2 h-3 w-3 -translate-y-1/2 rounded-full bg-slate-900 transition-all duration-700 dark:bg-slate-100"
-                  style={{ left: `${Math.max(8, etaProgress - 4)}%` }}
-                />
-                {liveLocation && (
-                  <p className="absolute bottom-2 left-2 rounded-md bg-white/85 px-2 py-1 text-[10px] font-semibold text-slate-700 dark:bg-slate-900/85 dark:text-slate-200">
-                    Live: {Number(liveLocation.lat).toFixed(4)}, {Number(liveLocation.lng).toFixed(4)}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-800">
-            <h2 className="text-sm font-bold uppercase tracking-wide text-slate-700 dark:text-slate-200">Tracking events</h2>
-            <ul className="mt-3 space-y-2">
-              {(currentOrder.trackingEvents || []).map((event, index) => (
-                <li key={index} className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
-                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{event.status}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{event.note || "Status update"}</p>
-                  <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">{formatDateTime(event.timestamp)}</p>
+          <section className={card}>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">Items</h2>
+            <ul className="mt-2 divide-y divide-slate-100 text-sm dark:divide-slate-800">
+              {(currentOrder.items || []).map((item) => (
+                <li key={item._id || item.menuItem} className="flex justify-between gap-3 py-2">
+                  <span className="text-slate-800 dark:text-slate-200">
+                    {item.quantity} × {item.name}
+                  </span>
+                  <span className="tabular-nums text-slate-600 dark:text-slate-300">{formatCurrency(item.price * item.quantity)}</span>
                 </li>
               ))}
             </ul>
-          </div>
+            {currentOrder.discountAmount > 0 && (
+              <p className="mt-2 text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+                Saved {formatCurrency(currentOrder.discountAmount)} with {currentOrder.couponCode}
+              </p>
+            )}
+          </section>
+        </aside>
+      </div>
 
-          <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
-            <h2 className="text-sm font-bold uppercase tracking-wide text-slate-700 dark:text-slate-200">Delivery chat</h2>
-            <div className="mt-3 h-44 space-y-2 overflow-y-auto rounded-xl bg-slate-50 p-3 dark:bg-slate-800">
-              {chatMessages.map((msg, index) => (
-                <div
-                  key={index}
-                  className={
-                    "max-w-[85%] rounded-xl px-3 py-2 text-sm " +
-                    (msg.from === "customer"
-                      ? "ml-auto bg-slate-900 text-white"
-                      : "bg-white text-slate-700 dark:bg-slate-900 dark:text-slate-200")
-                  }
+      {otherOrders.length > 0 && (
+        <section className={card}>
+          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">Your other orders</h2>
+          <ul className="mt-2 divide-y divide-slate-100 dark:divide-slate-800">
+            {otherOrders.map((order) => (
+              <li key={order._id}>
+                <button
+                  type="button"
+                  onClick={() => setSearchParams({ orderId: order._id })}
+                  className="flex w-full items-center justify-between gap-3 py-3 text-left text-sm hover:text-rose-700"
                 >
-                  {msg.text}
-                </div>
-              ))}
-            </div>
-            <form onSubmit={sendChat} className="mt-3 flex gap-2">
-              <input
-                value={chatInput}
-                onChange={(event) => setChatInput(event.target.value)}
-                placeholder="Type message to delivery partner"
-                className="w-full rounded-full border border-slate-300 px-4 py-2 text-sm dark:border-slate-700 dark:bg-slate-950"
-              />
-              <button type="submit" className="rounded-full bg-rose-500 px-4 py-2 text-sm font-bold text-white">
-                Send
-              </button>
-            </form>
-          </div>
+                  <span>
+                    <span className="font-semibold text-slate-900 dark:text-slate-100">#{order.shortId}</span>{" "}
+                    <span className="text-slate-600 dark:text-slate-400">· {order.restaurant?.name} · {formatDateTime(order.createdAt)}</span>
+                  </span>
+                  <span className="shrink-0 text-xs font-semibold text-slate-600 dark:text-slate-400">
+                    {order.status === "pending" && order.paymentStatus !== "paid" ? "Payment pending" : ORDER_STATUS_LABELS[order.status]}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
         </section>
-      ) : (
-        <p className="rounded-2xl bg-white p-6 text-sm text-slate-600 dark:bg-slate-900 dark:text-slate-300">No orders found yet.</p>
       )}
     </div>
   );

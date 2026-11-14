@@ -65,7 +65,7 @@ const FloatingAIChatWidget = () => {
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="fixed bottom-6 right-6 z-[95] rounded-full bg-rose-500 px-4 py-3 text-sm font-bold text-white shadow-xl shadow-rose-500/30"
+        className="fixed bottom-6 right-6 z-[95] hidden rounded-full lg:block bg-rose-500 px-4 py-3 text-sm font-bold text-white shadow-xl shadow-rose-500/30"
       >
         AI Order
       </button>

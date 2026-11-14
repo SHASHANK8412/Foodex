@@ -11,6 +11,9 @@ process.env.RAZORPAY_KEY_SECRET = "";
 process.env.FIREBASE_SERVICE_ACCOUNT = "";
 process.env.GOOGLE_GEMINI_API_KEY = "";
 process.env.OPENAI_API_KEY = "";
+process.env.GROQ_API_KEY = "";
+process.env.AGENT_LLM_PROVIDER = "rules";
+process.env.ANALYTICS_OUTPUT_DIR = require("path").join(require("os").tmpdir(), "foodex-test-no-spark-output");
 process.env.MAPTILER_API_KEY = "";
 process.env.JWT_SECRET = "integration-test-secret-that-is-long-enough";
 

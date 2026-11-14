@@ -29,8 +29,8 @@ const orderValue = new client.Histogram({
 
 const paymentsVerified = new client.Counter({
   name: "foodex_payments_total",
-  help: "Payment verification outcomes",
-  labelNames: ["outcome", "source"],
+  help: "Payment verification outcomes by method (upi, card, ...)",
+  labelNames: ["outcome", "source", "method"],
   registers: [register],
 });
 

@@ -177,6 +177,9 @@ const HomePage = () => {
             <Link to="/restaurants" className="rounded-full bg-slate-900 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-slate-900/20 hover:bg-slate-700">
               Explore restaurants
             </Link>
+            <Link to="/ai-order" className="rounded-full bg-rose-500 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-rose-500/20 hover:bg-rose-600">
+              Order with AI
+            </Link>
             <Link to="/orders/track" className="rounded-full border border-slate-300 bg-white px-6 py-3 text-sm font-bold text-slate-700 hover:border-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
               Track order
             </Link>

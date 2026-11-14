@@ -4,6 +4,10 @@ import { Link } from "react-router-dom";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { fetchPaymentDashboard } from "../redux/slices/adminSlice";
 import { formatCurrency } from "../utils/format";
+import { RankedBars } from "../components/pipeline/PipelineCharts";
+import { PAYMENT_METHOD_LABELS } from "../utils/paymentMethods";
+
+const methodLabel = (method) => PAYMENT_METHOD_LABELS[method] || (method === "unknown" || !method ? "Not recorded" : method);
 
 const AdminPaymentsPage = () => {
   const dispatch = useDispatch();
@@ -130,6 +134,18 @@ const AdminPaymentsPage = () => {
       </section>
 
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-xl font-bold text-slate-900">Paid with</h2>
+        <p className="mb-4 text-sm text-slate-500">Successful payments by method, from Razorpay&apos;s record of each payment.</p>
+        <RankedBars
+          rows={(paymentDashboard.methodBreakdown || []).map((row) => ({ ...row, label: methodLabel(row.method) }))}
+          labelKey="label"
+          valueKey="count"
+          detail={(row) => `${Math.round((row.share || 0) * 100)}% · ${formatCurrency(row.revenue)}`}
+          emptyText="No successful payments in this period."
+        />
+      </section>
+
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <h2 className="text-xl font-bold text-slate-900">Recent transactions</h2>
         <div className="mt-4 overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200 text-sm">
@@ -141,6 +157,7 @@ const AdminPaymentsPage = () => {
                 <th className="px-3 py-2">Restaurant</th>
                 <th className="px-3 py-2">Amount</th>
                 <th className="px-3 py-2">Status</th>
+                <th className="px-3 py-2">Method</th>
                 <th className="px-3 py-2">Gateway Payment</th>
               </tr>
             </thead>
@@ -164,6 +181,16 @@ const AdminPaymentsPage = () => {
                     >
                       {payment.status}
                     </span>
+                  </td>
+                  <td className="px-3 py-2 text-slate-700">
+                    {payment.method ? methodLabel(payment.method) : "-"}
+                    {payment.methodDetails?.vpaMasked && <span className="block text-xs text-slate-500">{payment.methodDetails.vpaMasked}</span>}
+                    {payment.methodDetails?.cardLast4 && (
+                      <span className="block text-xs text-slate-500">
+                        {payment.methodDetails.cardNetwork} •••• {payment.methodDetails.cardLast4}
+                      </span>
+                    )}
+                    {payment.methodDetails?.simulated && <span className="block text-xs text-slate-500">test mode</span>}
                   </td>
                   <td className="px-3 py-2 text-slate-600">{payment.razorpayPaymentId || "-"}</td>
                 </tr>

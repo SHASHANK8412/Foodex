@@ -20,7 +20,13 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     const message = error.response?.data?.message || error.message || "Request failed";
-    return Promise.reject(new Error(message));
+    // Keep the status and details (e.g. which checks failed) for callers that show them.
+    return Promise.reject(
+      Object.assign(new Error(message), {
+        status: error.response?.status,
+        details: error.response?.data?.details || null,
+      })
+    );
   }
 );
 

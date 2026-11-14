@@ -263,7 +263,48 @@ const estimateDeliveryTime = ({ distanceKm, itemCount, hourOfDay }) => {
   };
 };
 
+// Delivery time for an order from a specific restaurant: the kitchen's current
+// wait (live, from demandService) plus travel. Checkout and the ordering agent
+// both use this, so they always agree.
+//
+// With the Spark ETA model, travel and handling come from the model and the
+// kitchen contributes only its backlog beyond normal prep time (the model has
+// already learned normal prep). Without it: about 3 minutes per km plus 3 to
+// hand over, and a minute for each item beyond four.
+const DEFAULT_DISTANCE_KM = 4;
+
+const estimateOrderEta = ({ restaurant, itemCount = 2, distanceKm = DEFAULT_DISTANCE_KM, hourOfDay }) => {
+  const kitchenMinutes = Math.max(0, toSafeNumber(restaurant?.estimatedWaitMinutes, 20));
+  const prepMinutes = Math.max(0, toSafeNumber(restaurant?.avgPrepMinutes, kitchenMinutes));
+  const items = Math.max(1, toSafeNumber(itemCount, 2));
+  const distance = Math.max(0, toSafeNumber(distanceKm, DEFAULT_DISTANCE_KM));
+
+  const model = estimateDeliveryTime({ distanceKm: distance, itemCount: items, hourOfDay });
+  if (model.source === "spark_model") {
+    const backlog = Math.max(0, kitchenMinutes - prepMinutes);
+    return {
+      minutes: model.estimatedMinutes + Math.round(backlog),
+      kitchenMinutes,
+      travelMinutes: null,
+      distanceKm: distance,
+      source: "spark_model_plus_backlog",
+    };
+  }
+
+  const travelMinutes = Math.round(3 + 3 * distance);
+  const handlingMinutes = Math.max(0, items - 4);
+  return {
+    minutes: Math.round(kitchenMinutes + travelMinutes + handlingMinutes),
+    kitchenMinutes,
+    travelMinutes,
+    distanceKm: distance,
+    source: "kitchen_wait_plus_travel",
+  };
+};
+
 module.exports = {
+  DEFAULT_DISTANCE_KM,
+  estimateOrderEta,
   getFrequentlyBoughtTogether,
   getRecommendations,
   getDemandPrediction,

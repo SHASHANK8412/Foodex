@@ -33,7 +33,7 @@ const env = {
   razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET || "",
   webhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET || "",
   googleGeminiApiKey: process.env.GOOGLE_GEMINI_API_KEY || "",
-  googleGeminiModel: process.env.GOOGLE_GEMINI_MODEL || "gemini-2.0-flash",
+  googleGeminiModel: process.env.GOOGLE_GEMINI_MODEL || "gemini-3.5-flash-lite",
   openaiApiKey: process.env.OPENAI_API_KEY || "",
   openaiModel: process.env.OPENAI_MODEL || "gpt-4o-mini",
   embeddingModel: process.env.OPENAI_EMBEDDING_MODEL || "text-embedding-ada-002",

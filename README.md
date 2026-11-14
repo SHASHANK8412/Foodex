@@ -3,7 +3,8 @@
 Full-stack food delivery platform for four kinds of user: customers, restaurant
 owners, delivery riders and admins. React and Node.js on MongoDB, with
 real-time order tracking over Socket.io, server-side pricing with coupons,
-Razorpay payments, and an event-driven big data pipeline behind it:
+UPI-first Razorpay payments, an **LLM ordering agent** that turns a sentence into a
+validated cart, and an event-driven big data pipeline behind it:
 **Apache Kafka** for event streaming, **Apache Spark** (Structured Streaming
 and MLlib) for real-time and batch analytics, and a bronze/silver/gold data lake.
 
@@ -87,15 +88,63 @@ Spark did not produce it.
 - **Storage:** MongoDB (operational), Parquet data lake (analytical)
 - **Other:** Razorpay payments, Gemini AI ordering assistant, Docker Compose, GitHub Actions
 
+## AI ordering agent
+
+Type what you want, for example *"Something spicy and veg for 3 people, under ₹600,
+delivered in 30 minutes"*, and an LLM agent builds the cart from the live catalogue
+(`/ai-order`, `POST /api/agent/plan`).
+
+```mermaid
+flowchart LR
+    R["Request text"] --> S["LLM records a structured spec"]
+    S --> X["Cross-check against the text<br/>(budget, people, time, diet)"]
+    X --> T["Tools: search menus, price cart<br/>(the same services as the REST API)"]
+    T --> P["LLM proposes a cart"]
+    P --> V{"Deterministic validator<br/>budget · veg · spice · exclusions<br/>party size · open · delivery time"}
+    V -- "failed checks" --> P
+    V -- "passes" --> C["Proposal shown to the customer"]
+    C -- "customer confirms" --> O["Re-validated, then order +<br/>Razorpay payment order"]
+```
+
+Guardrails, each covered by tests:
+
+- **The model never grades itself.** A deterministic validator checks every proposed cart; failed checks go back to the model, which re-plans (up to 3 proposals).
+- **The model's reading of the request is checked too.** Numbers and diet stated in the text (₹600, 3 people, 30 minutes, vegetarian) override the model's spec when they disagree.
+- **No tool can order or pay.** The agent only proposes. An order and its Razorpay payment are created only when the customer presses confirm, after the cart is validated again; a price change since the proposal asks the customer to review instead of charging a different amount.
+- **No model-written figures reach the customer.** Totals and times shown come from the validated cart, never from the model's text (an early version showed a model-invented total).
+- **It degrades instead of failing.** On a provider error or rate limit it tries the next model, then the rule-based planner.
+
+### Evaluation
+
+50 requests ([`backend/src/agent/eval/requests.js`](backend/src/agent/eval/requests.js)) with hand-written ground truth, 12 of them impossible on purpose (too fast, too cheap, contradictory). A cart counts only if it passes the validator under the *ground truth*, not the agent's own reading; an impossible request counts only if the agent declines. An exhaustive oracle confirms which requests are feasible. Runs use a fresh in-memory database seeded with the demo catalogue.
+
+| Planner | Correct (requests it answered) | Valid cart, feasible requests | Impossible requests declined | Latency p50 / p95 | Fell back to rules |
+|---|---|---|---|---|---|
+| Groq (openai/gpt-oss-120b) | **24/25 (96%)** | 19/19 (18 first try, 1 re-planned) | 5/6 | 21.7s / 63.6s | 25 |
+| Gemini 3.5 Flash Lite (gemini-3.5-flash-lite) | **44/47 (93.6%)** | 35/37 (31 first try, 4 re-planned) | 9/10 | 5.0s / 29.3s | 3 |
+| Rule-based baseline (deterministic parser) | **44/50 (88%)** | 34/38 (34 first try, 0 re-planned) | 10/12 | &lt;0.1s | 0 |
+
+"Correct" counts only requests the LLM answered itself; requests that hit a free-tier rate limit and were answered by the rule-based fallback are excluded from the LLM rows and counted in the last column. Full per-request results: [`backend/src/agent/eval/results/`](backend/src/agent/eval/results).
+
+```bash
+cd backend
+npm run agent:eval                                        # rule-based baseline, no API key
+npm run agent:eval -- --engine groq                       # needs GROQ_API_KEY
+npm run agent:eval -- --engine gemini --model gemini-3.5-flash-lite
+```
+
+What the evaluation found and fixed along the way: the request parser read "for **a** party" as one person and "me and 2 friends" as two, and would have overridden a correct model; Groq rejected tool calls whose optional arguments were `null` (23 of 50 requests fell back before optional parameters were made nullable). The remaining misses are honest ones: "Pepperoni pizza, but I'm vegetarian" gets a Margherita instead of being declined, and the parser baseline cannot read "three pizzas" or "nothing fried".
+
 ## Engineering highlights
 
 - **One pricing engine for every screen.** The cart, checkout and order creation all price through `POST /api/pricing/quote`, which reads prices from the database and validates coupons (percentage with caps, flat, free delivery, first-order-only, per-user limits, and restaurant promotions). A customer is charged exactly what they were shown; previously the cart showed a discount that checkout silently dropped. (`backend/src/services/pricingService.js`)
+- **UPI-first payments.** Checkout opens Razorpay on UPI: a QR code on desktop, the UPI app on a phone, with the Collect flow (deprecated by NPCI from February 2026) hidden. The customer's mobile number is prefilled so Razorpay skips its contact screen. The server records how each payment was actually made from Razorpay's Payments API (UPI ID masked), the admin dashboard breaks payments down by method, and an unpaid order can be paid later from order tracking against the same Razorpay order instead of creating a duplicate.
 - **Order lifecycle as a state machine.** Every status change follows one transition table. Riders can only move orders assigned to them, and only through pick-up and delivery. Paid orders go to the available rider with the fewest active deliveries. (`backend/src/constants/order.js`, `deliveryAssignmentService.js`)
 - **Real-time, with authorisation.** Customers follow their order and the rider's live position over Socket.io. Only people allowed to see an order can join its room, and only its assigned rider can publish a location.
 - **Security.** Rate-limited login and registration, registration that cannot set a role or account state, production start-up refused with default secrets, credentials redacted from logs, and no internal error details in production responses.
 - **Observability.** Structured JSON logs with a request id on every request and in every error response; Prometheus metrics for latency per route, orders, order value, payments and events (`/metrics`); liveness and readiness checks (`/api/health/live`, `/api/health/ready`).
 - **Documented API.** OpenAPI 3.1 reference with Swagger UI at `/api/docs`.
-- **Tested.** 54 backend tests (3 of them run against a real Kafka broker in CI), including an end-to-end order-flow suite on a real in-memory MongoDB that covers pricing, coupons, payment, rider assignment, permissions and lifecycle rules, plus pytest suites for the Spark jobs.
+- **Tested.** 119 backend tests (3 of them run against a real Kafka broker in CI), including end-to-end suites on an in-memory MongoDB for the order flow (pricing, coupons, payment methods, retries, rider assignment, permissions, lifecycle) and the ordering agent (re-planning, spec correction, confirmation guardrails); 16 frontend tests; pytest suites for the Spark jobs; and the 50-request agent evaluation, whose baseline runs in CI.
 - **Fast first load.** Route-based code splitting cut the initial JavaScript bundle from 1,980 kB to 391 kB (588 kB to 118 kB gzipped); map, chart and PDF libraries load only on the pages that use them.
 - **Containerised.** Docker images for the API (non-root, health-checked) and the web app (nginx serving the build and proxying the API, GraphQL and WebSockets on one origin), with Compose profiles for the data platform and Prometheus.
 
@@ -112,7 +161,9 @@ Created automatically on first start (in development, or with `SEED_DEMO_DATA=tr
 
 Coupons to try in the cart: `FOODEX30` (30% off above ₹299, up to ₹150), `FASTFREE` (free delivery), `WELCOME100` (₹100 off a first order).
 
-Without Razorpay keys, checkout uses mock payments, so the whole flow works offline.
+Without Razorpay keys, checkout uses mock payments, so the whole flow works offline. With Razorpay test keys, pay by UPI with the test UPI ID `success@razorpay` (or `failure@razorpay` to see a failed payment).
+
+The AI ordering agent uses Groq or Gemini when `GROQ_API_KEY` or `GOOGLE_GEMINI_API_KEY` is set, and the rule-based planner otherwise.
 
 ## Running locally without Docker
 
@@ -191,7 +242,8 @@ More detail on the jobs, their inputs and outputs: [backend/analytics/README.md]
 ## Tests
 
 ```bash
-cd backend && npm test                              # 54 tests: API, order flow on in-memory MongoDB, event bus, Spark output
+cd backend && npm test                              # API, order flow and agent on in-memory MongoDB, event bus, Spark output
+cd backend && npm run agent:eval                    # 50-request ordering-agent evaluation (rule-based baseline)
 cd frontend && npm test && npm run lint
 cd backend/analytics && python -m pytest tests      # generator; Spark tests need Java 17 and pyspark
 ```
@@ -202,7 +254,7 @@ and smoke-tests both Docker images.
 
 ## Application features
 
-- **Customers:** browse and search restaurants with live demand and wait times, semantic dish search, a Gemini-powered ordering assistant, cart with coupons and "frequently ordered together" suggestions, Razorpay checkout, live order tracking with the rider's position, order history, loyalty points, group orders
+- **Customers:** order in plain language with the AI ordering agent; browse restaurants with live delivery estimates; menus with veg-only filter, dish search and spice markers; cart with coupons and "frequently ordered together" suggestions; UPI-first Razorpay checkout; live order tracking with the rider's position and a call button; pay later for an unpaid order; loyalty points; group orders. Phones get an app-style bottom tab bar.
 - **Restaurant owners:** incoming orders in real time, kitchen status updates, menu management with images, promotions, invoices
 - **Delivery riders:** availability toggle, assigned deliveries, pick-up and delivery steps, directions, live location sharing
 - **Admins:** operations dashboard, rider management, payments command centre, analytics, and the data pipeline page
@@ -213,13 +265,19 @@ These describe what the code does. Fill in the bracketed numbers from your own
 runs (the admin page, Kafka UI and the Spark job's `_manifest.json` report
 them), and only claim what you have run yourself.
 
+**AI**
+
+- Built an LLM ordering agent that turns natural-language requests into validated carts by calling Foodex's backend services as tools (menu search, pricing), with a deterministic validator for budget, diet, spice, exclusions, party size and delivery time, automatic re-planning on failed checks, and customer confirmation before any order or Razorpay payment; **93.6% correct** (44/47 requests answered by Gemini 3.5 Flash Lite) on a 50-request evaluation set with ground truth and deliberately impossible requests, versus 88% for a rule-based baseline.
+- Cross-checked LLM-extracted specs against deterministic parsing of the request, and made the agent provider-agnostic (Groq, Gemini, OpenAI) with model fallback chains and graceful degradation to a rule-based planner.
+
 **Full stack**
 
+- Implemented UPI-first payments on Razorpay (QR on desktop, app intent on mobile, deprecated Collect flow removed), recorded the actual payment method from Razorpay's Payments API, and added pay-later for unpaid orders without creating duplicate orders.
 - Built a multi-role food delivery platform (React 19, Node.js/Express, MongoDB) for customers, restaurant owners, riders and admins, with real-time order tracking and live rider location over Socket.io and Razorpay payments.
 - Designed a server-side pricing engine used by cart, checkout and order creation, with validated coupons (percentage, flat, free delivery, first-order and per-user limits) and restaurant promotions, fixing a defect where checkout charged more than the cart displayed.
 - Modelled the order lifecycle as a state machine with role-based transitions, least-loaded rider assignment, and authorisation on Socket.io rooms and location updates.
 - Added production readiness: structured logging with request ids, Prometheus metrics, liveness/readiness probes, OpenAPI 3.1 docs, rate-limited authentication, and Docker images behind an nginx reverse proxy.
-- Wrote 54 backend tests, including an end-to-end order-flow suite on in-memory MongoDB that caught a model hook that made every user update fail; cut the initial JS bundle by 80% with route-based code splitting.
+- Wrote 119 backend tests, including end-to-end suites on in-memory MongoDB that caught a model hook that made every user update fail; cut the initial JS bundle by 80% with route-based code splitting.
 
 **Data engineering**
 

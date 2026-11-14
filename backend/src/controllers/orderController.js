@@ -38,6 +38,11 @@ const getOrder = asyncHandler(async (req, res) => {
   res.status(StatusCodes.OK).json({ success: true, data: order });
 });
 
+const getPaymentSession = asyncHandler(async (req, res) => {
+  const data = await orderService.getPaymentSession({ orderId: req.params.orderId, user: req.user });
+  res.status(StatusCodes.OK).json({ success: true, data });
+});
+
 const getPaymentDiagnostics = asyncHandler(async (req, res) => {
   const diagnostics = await orderService.getPaymentDiagnostics({
     orderId: req.params.orderId,
@@ -71,6 +76,7 @@ const assignDeliveryPartner = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
+  getPaymentSession,
   createOrder,
   verifyPayment,
   razorpayWebhook,

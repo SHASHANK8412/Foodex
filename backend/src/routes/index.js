@@ -18,6 +18,7 @@ const groupOrderRoutes = require("./groupOrderRoutes");
 const pipelineRoutes = require("./pipelineRoutes");
 const eventRoutes = require("./eventRoutes");
 const pricingRoutes = require("./pricingRoutes");
+const agentRoutes = require("./agentRoutes");
 
 const router = express.Router();
 
@@ -52,5 +53,6 @@ router.use("/group-orders", groupOrderRoutes);
 router.use("/pipeline", pipelineRoutes);
 router.use("/events", eventRoutes);
 router.use("/pricing", pricingRoutes);
+router.use("/agent", agentRoutes);
 
 module.exports = router;

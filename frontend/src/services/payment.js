@@ -16,6 +16,36 @@ export const loadRazorpaySdk = () => {
   });
 };
 
+// Razorpay Checkout blocks, one per method the customer can pick.
+// UPI: QR code on desktop, the UPI app (intent) on mobile. The UPI Collect flow
+// (typing a UPI ID and approving a request) is deprecated under NPCI rules from
+// 28 Feb 2026, so it is hidden.
+const BLOCKS = {
+  upi: {
+    name: "Pay with UPI",
+    instruments: [{ method: "upi", flows: ["qr", "intent"], apps: ["google_pay", "phonepe", "paytm", "bhim"] }],
+  },
+  card: { name: "Pay with a card", instruments: [{ method: "card" }] },
+  netbanking: { name: "Netbanking", instruments: [{ method: "netbanking" }] },
+  wallet: { name: "Wallets", instruments: [{ method: "wallet" }] },
+};
+
+export const PAYMENT_METHODS = ["upi", "card", "netbanking", "wallet"];
+
+// The chosen method's block first, the rest after it, so the customer can still switch.
+export const buildCheckoutConfig = (method = "upi") => {
+  const chosen = PAYMENT_METHODS.includes(method) ? method : "upi";
+  const order = [chosen, ...PAYMENT_METHODS.filter((entry) => entry !== chosen)];
+  return {
+    display: {
+      blocks: Object.fromEntries(order.map((entry) => [entry, BLOCKS[entry]])),
+      sequence: order.map((entry) => `block.${entry}`),
+      hide: [{ method: "upi", flows: ["collect"] }],
+      preferences: { show_default_blocks: false },
+    },
+  };
+};
+
 export const openRazorpayCheckout = async ({
   key,
   amount,
@@ -23,6 +53,7 @@ export const openRazorpayCheckout = async ({
   orderId,
   customer,
   notes,
+  method = "upi",
 }) => {
   const loaded = await loadRazorpaySdk();
   if (!loaded || !window.Razorpay) {
@@ -30,6 +61,8 @@ export const openRazorpayCheckout = async ({
   }
 
   return new Promise((resolve, reject) => {
+    const contact = customer?.phone || "";
+    const email = customer?.email || "";
     const instance = new window.Razorpay({
       key,
       amount,
@@ -40,44 +73,13 @@ export const openRazorpayCheckout = async ({
       image: "https://razorpay.com/assets/razorpay-logo.svg",
       prefill: {
         name: customer?.name || "",
-        email: customer?.email || "",
-        contact: customer?.phone || "",
+        email,
+        contact,
+        // Razorpay only honours a prefilled method when contact and email are prefilled too.
+        ...(contact && email ? { method } : {}),
       },
       notes,
-      method: {
-        upi: true,
-        card: true,
-        netbanking: true,
-        wallet: true,
-      },
-      config: {
-        display: {
-          blocks: {
-            upi: {
-              name: "Pay via UPI",
-              instruments: [
-                { method: "upi", flows: ["collect", "intent"] },
-              ],
-            },
-            card: {
-              name: "Pay via Card",
-              instruments: [{ method: "card" }],
-            },
-            netbanking: {
-              name: "Netbanking",
-              instruments: [{ method: "netbanking" }],
-            },
-            wallet: {
-              name: "Wallet",
-              instruments: [{ method: "wallet" }],
-            },
-          },
-          sequence: ["block.upi", "block.card", "block.netbanking", "block.wallet"],
-          preferences: {
-            show_default_blocks: false,
-          },
-        },
-      },
+      config: buildCheckoutConfig(method),
       handler: (response) => {
         resolve(response);
       },

@@ -1,6 +1,14 @@
 const { StatusCodes } = require("http-status-codes");
 const asyncHandler = require("../utils/asyncHandler");
 const restaurantService = require("../services/restaurantService");
+const { estimateOrderEta } = require("../services/analyticsService");
+
+// Every restaurant carries the same delivery estimate checkout and the ordering
+// agent use (kitchen wait plus travel), so the number never differs between screens.
+const withDeliveryEstimate = (restaurant) => {
+  const plain = typeof restaurant.toJSON === "function" ? restaurant.toJSON() : restaurant;
+  return { ...plain, deliveryMinutes: estimateOrderEta({ restaurant: plain, itemCount: 2 }).minutes };
+};
 
 const createRestaurant = asyncHandler(async (req, res) => {
   const restaurant = await restaurantService.createRestaurant(req.body, req.user.userId);
@@ -9,12 +17,12 @@ const createRestaurant = asyncHandler(async (req, res) => {
 
 const listRestaurants = asyncHandler(async (_req, res) => {
   const restaurants = await restaurantService.listRestaurants();
-  res.status(StatusCodes.OK).json({ success: true, data: restaurants });
+  res.status(StatusCodes.OK).json({ success: true, data: restaurants.map(withDeliveryEstimate) });
 });
 
 const getRestaurant = asyncHandler(async (req, res) => {
   const data = await restaurantService.getRestaurantById(req.params.restaurantId);
-  res.status(StatusCodes.OK).json({ success: true, data });
+  res.status(StatusCodes.OK).json({ success: true, data: { ...data, restaurant: withDeliveryEstimate(data.restaurant) } });
 });
 
 const updateRestaurant = asyncHandler(async (req, res) => {

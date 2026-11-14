@@ -47,7 +47,19 @@ const orderSchema = new mongoose.Schema(
       default: ORDER_STATUS.PENDING,
       index: true,
     },
+    // "razorpay" until paid, then the method actually used: upi, card, netbanking, wallet...
     paymentMethod: { type: String, default: "razorpay" },
+    paymentDetails: {
+      vpaMasked: String,
+      upiFlow: String,
+      cardNetwork: String,
+      cardLast4: String,
+      bank: String,
+      wallet: String,
+      simulated: Boolean,
+    },
+    // For the rider and for payment prefill; Indian mobile number, 10 digits.
+    contactPhone: { type: String, trim: true },
     paymentStatus: {
       type: String,
       enum: Object.values(PAYMENT_STATUS),

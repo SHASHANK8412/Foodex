@@ -10,6 +10,7 @@
     "seed:demo": "node src/seeders/demoData.js",
     "analytics:export": "node src/scripts/exportAnalyticsData.js",
     "kafka:load": "node src/scripts/produceLoad.js",
+    "agent:eval": "node src/agent/eval/runEval.js",
     "test": "jest --runInBand"
   },
   "keywords": [],

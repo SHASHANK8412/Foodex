@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { toggleFavoriteRestaurant } from "../redux/slices/wishlistSlice";
@@ -9,11 +10,12 @@ const RestaurantCard = ({ restaurant }) => {
   const isFavorite = favorites.includes(restaurant._id);
 
   const rating = restaurant.rating ?? 4.2;
-  const wait = Number(restaurant.estimatedWaitMinutes) || 20;
-  const deliveryTime = `${wait}-${wait + 10} min`;
+  // The API's estimate (kitchen wait plus travel), the same one checkout shows.
+  const deliveryMinutes = restaurant.deliveryMinutes ?? (Number(restaurant.estimatedWaitMinutes) || 20) + 15;
+  const isOpen = restaurant.isOpen !== false;
+  const [imageFailed, setImageFailed] = useState(false);
   const tags = restaurant.cuisine?.slice(0, 3) || ["Popular", "Fast", "Fresh"];
   const demandLevel = restaurant.demandLevel || "low";
-  const estimatedWaitMinutes = restaurant.estimatedWaitMinutes || 20;
   const imageUrl =
     restaurant.imageUrl ||
     restaurant.image ||
@@ -30,9 +32,28 @@ const RestaurantCard = ({ restaurant }) => {
   };
 
   return (
-    <article className="group overflow-hidden rounded-3xl border border-orange-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900">
+    <article
+      className={`group overflow-hidden rounded-3xl border border-orange-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900 ${
+        isOpen ? "" : "opacity-75"
+      }`}
+    >
       <div className="relative h-44 overflow-hidden">
-        <img src={imageUrl} alt={restaurant.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+        {imageFailed ? (
+          <div
+            aria-hidden="true"
+            className="flex h-full w-full items-center justify-center bg-gradient-to-br from-orange-200 via-rose-200 to-amber-100 text-5xl font-black text-rose-700/70 dark:from-slate-800 dark:via-slate-700 dark:to-slate-800 dark:text-slate-300"
+          >
+            {restaurant.name?.charAt(0) || "F"}
+          </div>
+        ) : (
+          <img
+            src={imageUrl}
+            alt={restaurant.name}
+            loading="lazy"
+            onError={() => setImageFailed(true)}
+            className={`h-full w-full object-cover transition duration-500 group-hover:scale-105 ${isOpen ? "" : "grayscale"}`}
+          />
+        )}
         <button
           type="button"
           onClick={toggleFavorite}
@@ -44,13 +65,17 @@ const RestaurantCard = ({ restaurant }) => {
       <div className="space-y-3 p-5">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">{restaurant.name}</h3>
-          <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-            {restaurant.isOpen !== false ? "Open" : "Closed"}
+          <span
+            className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+              isOpen ? "bg-emerald-100 text-emerald-800" : "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200"
+            }`}
+          >
+            {isOpen ? "Open" : "Closed now"}
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
           <span className="rounded-full bg-amber-100 px-2 py-1 text-amber-700">⭐ {rating}</span>
-          <span className="rounded-full bg-sky-100 px-2 py-1 text-sky-700">{deliveryTime}</span>
+          {isOpen && <span className="rounded-full bg-sky-100 px-2 py-1 text-sky-800">About {deliveryMinutes} min</span>}
           <span
             className={
               "rounded-full px-2 py-1 " +
@@ -67,7 +92,6 @@ const RestaurantCard = ({ restaurant }) => {
             {restaurant.address?.city || "Unknown city"}
           </span>
         </div>
-        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Estimated wait: {estimatedWaitMinutes} mins</p>
         <p className="line-clamp-2 text-sm text-slate-600 dark:text-slate-300">{restaurant.description || "Fresh meals and comfort food."}</p>
         <div className="flex flex-wrap gap-2">
           {tags.map((tag) => (

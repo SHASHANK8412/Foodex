@@ -5,6 +5,7 @@ const MenuItem = require("../models/MenuItem");
 const ROLES = require("../constants/roles");
 const mongoose = require("mongoose");
 const { ensureDemoCoupons } = require("../services/pricingService");
+const { ensureDemoCatalog } = require("./demoCatalog");
 
 const DEMO_RIDER = {
   name: "Demo Rider",
@@ -304,6 +305,7 @@ const seedDemoData = async ({ force = false } = {}) => {
   console.log("user@foodex.com / user123");
   console.log("rider@foodex.com / rider123");
   await ensureDemoCoupons();
+  await ensureDemoCatalog({ adminId: userMap["admin@foodex.com"]._id });
   console.log("Demo restaurants, menu items and coupons inserted successfully.");
 
   return { seeded: true };
@@ -312,9 +314,13 @@ const seedDemoData = async ({ force = false } = {}) => {
 const ensureDemoData = async () => {
   const result = await seedDemoData({ force: false });
   await ensureDemoCoupons();
-  // Databases seeded before the rider existed get one too.
+  // Databases seeded before the rider and the larger catalogue existed get them too.
   if (!(await User.exists({ email: DEMO_RIDER.email }))) {
     await User.create(DEMO_RIDER);
+  }
+  const admin = await User.findOne({ role: ROLES.ADMIN }).select("_id");
+  if (admin) {
+    await ensureDemoCatalog({ adminId: admin._id });
   }
   return result;
 };

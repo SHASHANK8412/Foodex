@@ -19,6 +19,7 @@ const AdminDashboardPage = lazy(() => import("./pages/AdminDashboardPage"));
 const AdminAnalyticsPage = lazy(() => import("./pages/AdminAnalyticsPage"));
 const AdminPaymentsPage = lazy(() => import("./pages/AdminPaymentsPage"));
 const AdminPipelinePage = lazy(() => import("./pages/AdminPipelinePage"));
+const AiOrderPage = lazy(() => import("./pages/AiOrderPage"));
 const DeliveryDashboardPage = lazy(() => import("./pages/DeliveryDashboardPage"));
 const RestaurantDashboardPage = lazy(() => import("./pages/RestaurantDashboardPage"));
 const MenuDashboardPage = lazy(() => import("./pages/MenuDashboardPage"));
@@ -54,6 +55,14 @@ const App = () => {
           element={
             <ProtectedRoute roles={["user", "admin"]}>
               <OrderConfirmationPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="ai-order"
+          element={
+            <ProtectedRoute roles={["user", "admin"]}>
+              <AiOrderPage />
             </ProtectedRoute>
           }
         />

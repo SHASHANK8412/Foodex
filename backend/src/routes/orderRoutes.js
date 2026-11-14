@@ -19,6 +19,7 @@ router.use(protect);
 
 router.get("/", orderController.listOrders);
 router.get("/:orderId/payment-status", orderController.getPaymentDiagnostics);
+router.post("/:orderId/payment-session", orderController.getPaymentSession);
 router.get("/:orderId", orderController.getOrder);
 router.post("/", ...createOrderValidator, validate, orderController.createOrder);
 router.post("/verify-payment", ...verifyPaymentValidator, validate, orderController.verifyPayment);

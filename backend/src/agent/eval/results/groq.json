@@ -1,0 +1,2308 @@
+{
+  "summary": {
+    "engine": "groq",
+    "models": [
+      "openai/gpt-oss-120b"
+    ],
+    "ranAt": "2026-11-13T15:44:50.473Z",
+    "requests": 50,
+    "successes": 46,
+    "feasible": {
+      "total": 38,
+      "validFirstTry": 35,
+      "validAfterReplan": 1,
+      "invalidCart": 2,
+      "missed": 0
+    },
+    "infeasible": {
+      "total": 12,
+      "correctlyDeclined": 10,
+      "invalidCart": 2
+    },
+    "latency": {
+      "meanMs": 26866,
+      "p50Ms": 21694,
+      "p95Ms": 63586
+    },
+    "meanModelCalls": 1.62,
+    "totalTokens": 189364,
+    "specCorrections": 0,
+    "fallbacks": 25,
+    "errors": 0,
+    "oracleDisagreements": [],
+    "ambiguousCases": []
+  },
+  "rows": [
+    {
+      "id": 1,
+      "text": "Something spicy and veg for 3 people, under ₹600, delivered in 30 minutes",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Chaat Street",
+        "total": 204.85,
+        "eta": 30
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "rules",
+      "models": [],
+      "fallbackReason": "400 Tool call validation failed: tool call validation failed: parameters for tool search_menus did not match schema: errors: [`/maxItemPrice`: expected number, but got null]",
+      "proposals": 1,
+      "latencyMs": 1841,
+      "modelCalls": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Chaat Street",
+        "total": 204.85,
+        "eta": 30,
+        "items": [
+          "1x Vada Pav",
+          "2x Samosa (2 pcs)"
+        ]
+      },
+      "agentSpec": {
+        "diet": "veg",
+        "cuisines": [],
+        "spice": "hot",
+        "partySize": 3,
+        "budgetTotal": 600,
+        "maxDeliveryMinutes": 30,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 2,
+      "text": "pizza for two under ₹900",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Pasta Street",
+        "total": 489.4,
+        "eta": 37
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "groq",
+      "models": [
+        "openai/gpt-oss-120b"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 13086,
+      "modelCalls": 3,
+      "inputTokens": 8200,
+      "outputTokens": 665,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Pasta Street",
+        "total": 667.9,
+        "eta": 37,
+        "items": [
+          "2x Margherita Pizza"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 2,
+        "budgetTotal": 900,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "pizza"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 3,
+      "text": "biryani for me",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Urban Spice Kitchen",
+        "total": 332.95,
+        "eta": 43
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "rules",
+      "models": [],
+      "fallbackReason": "400 Tool call validation failed: tool call validation failed: parameters for tool search_menus did not match schema: errors: [`/maxItemPrice`: expected number, but got null, `/notSpicy`: expected boolean, but got null, `/vegOnly`: expected boolean, but got null]",
+      "proposals": 1,
+      "latencyMs": 20684,
+      "modelCalls": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Urban Spice Kitchen",
+        "total": 332.95,
+        "eta": 43,
+        "items": [
+          "1x Chicken Biryani"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 1,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "biryani"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 4,
+      "text": "Italian dinner for me and my wife, she's vegetarian, around ₹700",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Pasta Street",
+        "total": 310.9,
+        "eta": 37
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "groq",
+      "models": [
+        "openai/gpt-oss-120b"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 41363,
+      "modelCalls": 3,
+      "inputTokens": 4621,
+      "outputTokens": 934,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Pasta Street",
+        "total": 667.9,
+        "eta": 37,
+        "items": [
+          "2x Margherita Pizza"
+        ]
+      },
+      "agentSpec": {
+        "diet": "veg",
+        "cuisines": [
+          "Italian"
+        ],
+        "spice": null,
+        "partySize": 2,
+        "budgetTotal": 700,
+        "maxDeliveryMinutes": null,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 5,
+      "text": "Quick South Indian breakfast for 4, ₹150 each",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Dosa Junction",
+        "total": 413.8,
+        "eta": 30
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "groq",
+      "models": [
+        "openai/gpt-oss-120b"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 32433,
+      "modelCalls": 3,
+      "inputTokens": 4547,
+      "outputTokens": 818,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Dosa Junction",
+        "total": 476.8,
+        "eta": 30,
+        "items": [
+          "2x Ghee Podi Idli",
+          "2x Medu Vada"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [
+          "South Indian"
+        ],
+        "spice": null,
+        "partySize": 4,
+        "budgetTotal": 600,
+        "maxDeliveryMinutes": null,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 6,
+      "text": "Burgers for 2, no chicken, not too spicy",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Burger Barn",
+        "total": 247.9,
+        "eta": 33
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "groq",
+      "models": [
+        "openai/gpt-oss-120b"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 20763,
+      "modelCalls": 3,
+      "inputTokens": 4116,
+      "outputTokens": 579,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Burger Barn",
+        "total": 394.9,
+        "eta": 33,
+        "items": [
+          "2x Veg Cheese Burger"
+        ]
+      },
+      "agentSpec": {
+        "diet": "veg",
+        "cuisines": [
+          "Burgers"
+        ],
+        "spice": "no_hot",
+        "partySize": 2,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "burger"
+        ],
+        "exclude": [
+          "chicken"
+        ]
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 7,
+      "text": "Chinese for 3 people, budget 700",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Dragon Bowl",
+        "total": 477.85,
+        "eta": 45
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "rules",
+      "models": [],
+      "fallbackReason": "400 Tool call validation failed: tool call validation failed: parameters for tool search_menus did not match schema: errors: [`/maxItemPrice`: expected number, but got null]",
+      "proposals": 1,
+      "latencyMs": 14975,
+      "modelCalls": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Dragon Bowl",
+        "total": 572.35,
+        "eta": 45,
+        "items": [
+          "3x Veg Spring Rolls"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [
+          "Chinese"
+        ],
+        "spice": null,
+        "partySize": 3,
+        "budgetTotal": 700,
+        "maxDeliveryMinutes": null,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 8,
+      "text": "veg food for 3 delivered in 20 minutes",
+      "feasible": false,
+      "authorExpectedFeasible": false,
+      "sensibleCartExists": false,
+      "oracleCheapest": null,
+      "outcome": "correct_decline",
+      "success": true,
+      "status": "declined",
+      "engine": "rules",
+      "models": [],
+      "fallbackReason": "400 Tool call validation failed: tool call validation failed: parameters for tool search_menus did not match schema: errors: [`/maxItemPrice`: expected number, but got null]",
+      "proposals": 0,
+      "latencyMs": 23305,
+      "modelCalls": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "specCorrections": [],
+      "cart": null,
+      "agentSpec": {
+        "diet": "veg",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 3,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": 20,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": "No restaurant can deliver within 20 minutes"
+    },
+    {
+      "id": 9,
+      "text": "dinner for 4 under ₹100",
+      "feasible": false,
+      "authorExpectedFeasible": false,
+      "sensibleCartExists": false,
+      "oracleCheapest": null,
+      "outcome": "correct_decline",
+      "success": true,
+      "status": "declined",
+      "engine": "groq",
+      "models": [
+        "openai/gpt-oss-120b"
+      ],
+      "fallbackReason": null,
+      "proposals": 0,
+      "latencyMs": 71757,
+      "modelCalls": 6,
+      "inputTokens": 12666,
+      "outputTokens": 1020,
+      "specCorrections": [],
+      "cart": null,
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 4,
+        "budgetTotal": 100,
+        "maxDeliveryMinutes": null,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": "Budget ₹100 is insufficient to provide at least one dish per person for 4 people (minimum total exceeds ₹300)."
+    },
+    {
+      "id": 10,
+      "text": "Just vegetarian food for one, anything under 200 rupees",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Urban Spice Kitchen",
+        "total": 91.45,
+        "eta": 43
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "groq",
+      "models": [
+        "openai/gpt-oss-120b"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 53839,
+      "modelCalls": 3,
+      "inputTokens": 6186,
+      "outputTokens": 655,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Dosa Junction",
+        "total": 175.45,
+        "eta": 30,
+        "items": [
+          "1x Masala Dosa"
+        ]
+      },
+      "agentSpec": {
+        "diet": "veg",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 1,
+        "budgetTotal": 200,
+        "maxDeliveryMinutes": null,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 11,
+      "text": "Feed six of us for under ₹1,000, whatever's fastest",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Urban Spice Kitchen",
+        "total": 348.7,
+        "eta": 45
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "groq",
+      "models": [
+        "openai/gpt-oss-120b"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 33263,
+      "modelCalls": 3,
+      "inputTokens": 6577,
+      "outputTokens": 980,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Chaat Street",
+        "total": 506.2,
+        "eta": 32,
+        "items": [
+          "3x Dahi Puri",
+          "3x Samosa (2 pcs)"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 6,
+        "budgetTotal": 1000,
+        "maxDeliveryMinutes": null,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 12,
+      "text": "Something sweet for two",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Urban Spice Kitchen",
+        "total": 195.4,
+        "eta": 43
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "rules",
+      "models": [],
+      "fallbackReason": "400 Tool call validation failed: tool call validation failed: parameters for tool search_menus did not match schema: errors: [`/maxItemPrice`: expected number, but got null, `/notSpicy`: expected boolean, but got null, `/vegOnly`: expected boolean, but got null]",
+      "proposals": 1,
+      "latencyMs": 6907,
+      "modelCalls": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Sweet Tooth",
+        "total": 289.9,
+        "eta": 30,
+        "items": [
+          "2x Rasmalai"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 2,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "dessert"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 13,
+      "text": "A pizza and garlic bread for 2, under 800",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Pasta Street",
+        "total": 489.4,
+        "eta": 37
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "rules",
+      "models": [],
+      "fallbackReason": "400 Tool call validation failed: tool call validation failed: parameters for tool search_menus did not match schema: errors: [`/maxItemPrice`: expected number, but got null]",
+      "proposals": 1,
+      "latencyMs": 22716,
+      "modelCalls": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Pasta Street",
+        "total": 489.4,
+        "eta": 37,
+        "items": [
+          "1x Margherita Pizza",
+          "1x Garlic Bread"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 2,
+        "budgetTotal": 800,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "pizza",
+          "garlic bread"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 14,
+      "text": "Hot and spicy chicken for 2, under ₹700, within 45 min",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Urban Spice Kitchen",
+        "total": 384.4,
+        "eta": 43
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "groq",
+      "models": [
+        "openai/gpt-oss-120b"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 63586,
+      "modelCalls": 3,
+      "inputTokens": 8291,
+      "outputTokens": 1260,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Dragon Bowl",
+        "total": 604.9,
+        "eta": 45,
+        "items": [
+          "1x Schezwan Chicken Noodles",
+          "1x Kung Pao Chicken"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": "hot",
+        "partySize": 2,
+        "budgetTotal": 700,
+        "maxDeliveryMinutes": 45,
+        "include": [
+          "chicken"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 15,
+      "text": "No onion, no garlic veg meal for one under ₹300",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Urban Spice Kitchen",
+        "total": 91.45,
+        "eta": 43
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "groq",
+      "models": [
+        "openai/gpt-oss-120b"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 47426,
+      "modelCalls": 3,
+      "inputTokens": 7015,
+      "outputTokens": 866,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Dosa Junction",
+        "total": 205.9,
+        "eta": 30,
+        "items": [
+          "1x Curd Rice",
+          "1x Filter Coffee"
+        ]
+      },
+      "agentSpec": {
+        "diet": "veg",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 1,
+        "budgetTotal": 300,
+        "maxDeliveryMinutes": null,
+        "include": [],
+        "exclude": [
+          "onion",
+          "garlic"
+        ]
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 16,
+      "text": "I want dosa and filter coffee for 2 people",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Dosa Junction",
+        "total": 320.35,
+        "eta": 30
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "rules",
+      "models": [],
+      "fallbackReason": "400 Tool call validation failed: tool call validation failed: parameters for tool search_menus did not match schema: errors: [`/maxItemPrice`: expected number, but got null]",
+      "proposals": 1,
+      "latencyMs": 14463,
+      "modelCalls": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Dosa Junction",
+        "total": 320.35,
+        "eta": 30,
+        "items": [
+          "1x Masala Dosa",
+          "1x Medu Vada",
+          "1x Filter Coffee"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [
+          "South Indian"
+        ],
+        "spice": null,
+        "partySize": 2,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "dosa",
+          "coffee"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 17,
+      "text": "Lunch for the team of 8, all veg, under ₹2000, within an hour",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Urban Spice Kitchen",
+        "total": 451.6,
+        "eta": 47
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "groq",
+      "models": [
+        "openai/gpt-oss-120b"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 47830,
+      "modelCalls": 3,
+      "inputTokens": 6898,
+      "outputTokens": 1278,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Dosa Junction",
+        "total": 1092.1,
+        "eta": 34,
+        "items": [
+          "2x Masala Dosa",
+          "2x Rava Uttapam",
+          "1x Ghee Podi Idli",
+          "1x Medu Vada",
+          "1x Bisi Bele Bath",
+          "1x Curd Rice"
+        ]
+      },
+      "agentSpec": {
+        "diet": "veg",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 8,
+        "budgetTotal": 2000,
+        "maxDeliveryMinutes": 60,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 18,
+      "text": "Something healthy for me, no tofu",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Green Bowl",
+        "total": 280.45,
+        "eta": 35
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "rules",
+      "models": [],
+      "fallbackReason": "400 Tool call validation failed: tool call validation failed: parameters for tool search_menus did not match schema: errors: [`/maxItemPrice`: expected number, but got null, `/notSpicy`: expected boolean, but got null, `/vegOnly`: expected boolean, but got null]",
+      "proposals": 1,
+      "latencyMs": 25603,
+      "modelCalls": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Green Bowl",
+        "total": 280.45,
+        "eta": 35,
+        "items": [
+          "1x Hummus Falafel Wrap"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [
+          "Healthy"
+        ],
+        "spice": null,
+        "partySize": 1,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": null,
+        "include": [],
+        "exclude": [
+          "tofu"
+        ]
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 19,
+      "text": "Pasta for 3 under ₹400",
+      "feasible": false,
+      "authorExpectedFeasible": false,
+      "sensibleCartExists": false,
+      "oracleCheapest": null,
+      "outcome": "correct_decline",
+      "success": true,
+      "status": "declined",
+      "engine": "rules",
+      "models": [],
+      "fallbackReason": "400 Tool call validation failed: tool call validation failed: parameters for tool search_menus did not match schema: errors: [`/maxItemPrice`: expected number, but got null]",
+      "proposals": 1,
+      "latencyMs": 37526,
+      "modelCalls": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "specCorrections": [],
+      "cart": null,
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 3,
+        "budgetTotal": 400,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "pasta"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": "Every option is over the budget"
+    },
+    {
+      "id": 20,
+      "text": "Chilli paneer and noodles for two, veg, under ₹600",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Dragon Bowl",
+        "total": 510.4,
+        "eta": 45
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "groq",
+      "models": [
+        "openai/gpt-oss-120b"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 60373,
+      "modelCalls": 3,
+      "inputTokens": 7833,
+      "outputTokens": 1078,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Dragon Bowl",
+        "total": 510.4,
+        "eta": 45,
+        "items": [
+          "1x Veg Hakka Noodles",
+          "1x Chilli Paneer"
+        ]
+      },
+      "agentSpec": {
+        "diet": "veg",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 2,
+        "budgetTotal": 600,
+        "maxDeliveryMinutes": null,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 21,
+      "text": "Mild food for my 2 kids and me, under 500",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Urban Spice Kitchen",
+        "total": 194.35,
+        "eta": 43
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "rules",
+      "models": [],
+      "fallbackReason": "400 Tool call validation failed: tool call validation failed: parameters for tool search_menus did not match schema: errors: [`/maxItemPrice`: expected number, but got null]",
+      "proposals": 1,
+      "latencyMs": 8144,
+      "modelCalls": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Chaat Street",
+        "total": 194.35,
+        "eta": 30,
+        "items": [
+          "3x Samosa (2 pcs)"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": "no_hot",
+        "partySize": 3,
+        "budgetTotal": 500,
+        "maxDeliveryMinutes": null,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 22,
+      "text": "Get me a burger in 25 minutes",
+      "feasible": false,
+      "authorExpectedFeasible": false,
+      "sensibleCartExists": false,
+      "oracleCheapest": null,
+      "outcome": "correct_decline",
+      "success": true,
+      "status": "declined",
+      "engine": "groq",
+      "models": [
+        "openai/gpt-oss-120b"
+      ],
+      "fallbackReason": null,
+      "proposals": 0,
+      "latencyMs": 53764,
+      "modelCalls": 3,
+      "inputTokens": 8215,
+      "outputTokens": 600,
+      "specCorrections": [],
+      "cart": null,
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 1,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": 25,
+        "include": [
+          "burger"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": "No restaurant can deliver within the requested 25 minutes; the fastest burger option is Burger Barn with 33‑minute delivery, which exceeds the limit."
+    },
+    {
+      "id": 23,
+      "text": "Biryani for 4 within 40 minutes",
+      "feasible": false,
+      "authorExpectedFeasible": false,
+      "sensibleCartExists": false,
+      "oracleCheapest": null,
+      "outcome": "correct_decline",
+      "success": true,
+      "status": "declined",
+      "engine": "rules",
+      "models": [],
+      "fallbackReason": "400 Tool call validation failed: tool call validation failed: parameters for tool search_menus did not match schema: errors: [`/maxItemPrice`: expected number, but got null]",
+      "proposals": 0,
+      "latencyMs": 14649,
+      "modelCalls": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "specCorrections": [],
+      "cart": null,
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 4,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": 40,
+        "include": [
+          "biryani"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": "No restaurant can deliver within 40 minutes"
+    },
+    {
+      "id": 24,
+      "text": "Veg pizza without mushrooms for 2",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Pasta Street",
+        "total": 489.4,
+        "eta": 37
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "groq",
+      "models": [
+        "openai/gpt-oss-120b"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 26011,
+      "modelCalls": 3,
+      "inputTokens": 4337,
+      "outputTokens": 617,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Pasta Street",
+        "total": 667.9,
+        "eta": 37,
+        "items": [
+          "2x Margherita Pizza"
+        ]
+      },
+      "agentSpec": {
+        "diet": "veg",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 2,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "pizza"
+        ],
+        "exclude": [
+          "mushroom"
+        ]
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 25,
+      "text": "Pepperoni pizza, but I'm vegetarian",
+      "feasible": false,
+      "authorExpectedFeasible": false,
+      "sensibleCartExists": false,
+      "oracleCheapest": null,
+      "outcome": "invalid_cart",
+      "success": false,
+      "status": "proposed",
+      "engine": "groq",
+      "models": [
+        "openai/gpt-oss-120b"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 21601,
+      "modelCalls": 3,
+      "inputTokens": 4375,
+      "outputTokens": 600,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Pasta Street",
+        "total": 353.95,
+        "eta": 37,
+        "items": [
+          "1x Margherita Pizza"
+        ]
+      },
+      "agentSpec": {
+        "diet": "veg",
+        "cuisines": [
+          "Italian"
+        ],
+        "spice": null,
+        "partySize": 1,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "pizza"
+        ],
+        "exclude": [
+          "pepperoni"
+        ]
+      },
+      "truthFailures": [
+        "Includes pepperoni: Nothing matching \"pepperoni\""
+      ],
+      "reason": null
+    },
+    {
+      "id": 26,
+      "text": "Desserts for 5 people under ₹800",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Urban Spice Kitchen",
+        "total": 349.75,
+        "eta": 44
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "rules",
+      "models": [],
+      "fallbackReason": "400 Tool call validation failed: tool call validation failed: parameters for tool search_menus did not match schema: errors: [`/maxItemPrice`: expected number, but got null]",
+      "proposals": 1,
+      "latencyMs": 14840,
+      "modelCalls": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Sweet Tooth",
+        "total": 664.75,
+        "eta": 31,
+        "items": [
+          "5x Rasmalai"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 5,
+        "budgetTotal": 800,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "dessert"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 27,
+      "text": "Chai and samosa for 3",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Chaat Street",
+        "total": 235.3,
+        "eta": 30
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "rules",
+      "models": [],
+      "fallbackReason": "400 Tool call validation failed: tool call validation failed: parameters for tool search_menus did not match schema: errors: [`/maxItemPrice`: expected number, but got null, `/notSpicy`: expected boolean, but got null, `/vegOnly`: expected boolean, but got null]",
+      "proposals": 1,
+      "latencyMs": 14748,
+      "modelCalls": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Chaat Street",
+        "total": 235.3,
+        "eta": 30,
+        "items": [
+          "3x Samosa (2 pcs)",
+          "1x Masala Chai"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 3,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "chai",
+          "samosa"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 28,
+      "text": "I have ₹250, feed me something filling",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Urban Spice Kitchen",
+        "total": 91.45,
+        "eta": 43
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "groq",
+      "models": [
+        "openai/gpt-oss-120b"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 39085,
+      "modelCalls": 3,
+      "inputTokens": 6455,
+      "outputTokens": 789,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Chaat Street",
+        "total": 217.45,
+        "eta": 30,
+        "items": [
+          "1x Chole Bhature"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 1,
+        "budgetTotal": 250,
+        "maxDeliveryMinutes": null,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 29,
+      "text": "Romantic Italian dinner for two, with dessert, under ₹1,200",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Pasta Street",
+        "total": 373.9,
+        "eta": 37
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "rules",
+      "models": [],
+      "fallbackReason": "400 Tool call validation failed: tool call validation failed: parameters for tool search_menus did not match schema: errors: [`/maxItemPrice`: expected number, but got null]",
+      "proposals": 1,
+      "latencyMs": 7756,
+      "modelCalls": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Pasta Street",
+        "total": 510.4,
+        "eta": 37,
+        "items": [
+          "1x Arrabbiata Penne",
+          "1x Tiramisu"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [
+          "Italian"
+        ],
+        "spice": null,
+        "partySize": 2,
+        "budgetTotal": 1200,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "dessert"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 30,
+      "text": "Something spicy for one, delivered within 30 minutes",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Chaat Street",
+        "total": 101.95,
+        "eta": 30
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "rules",
+      "models": [],
+      "fallbackReason": "400 Tool call validation failed: tool call validation failed: parameters for tool search_menus did not match schema: errors: [`/maxItemPrice`: expected number, but got null]",
+      "proposals": 1,
+      "latencyMs": 16357,
+      "modelCalls": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Chaat Street",
+        "total": 101.95,
+        "eta": 30,
+        "items": [
+          "1x Vada Pav"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": "hot",
+        "partySize": 1,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": 30,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 31,
+      "text": "Non-veg Chinese for 2, under 650",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Dragon Bowl",
+        "total": 331.9,
+        "eta": 45
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "rules",
+      "models": [],
+      "fallbackReason": "400 Tool call validation failed: tool call validation failed: parameters for tool search_menus did not match schema: errors: [`/maxItemPrice`: expected number, but got null]",
+      "proposals": 1,
+      "latencyMs": 17122,
+      "modelCalls": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Dragon Bowl",
+        "total": 394.9,
+        "eta": 45,
+        "items": [
+          "2x Veg Spring Rolls"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [
+          "Chinese"
+        ],
+        "spice": null,
+        "partySize": 2,
+        "budgetTotal": 650,
+        "maxDeliveryMinutes": null,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 32,
+      "text": "Salad and a cold-pressed juice, just for me",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Green Bowl",
+        "total": 426.4,
+        "eta": 35
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "rules",
+      "models": [],
+      "fallbackReason": "400 Tool call validation failed: tool call validation failed: parameters for tool search_menus did not match schema: errors: [`/maxItemPrice`: expected number, but got null]",
+      "proposals": 1,
+      "latencyMs": 16415,
+      "modelCalls": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Green Bowl",
+        "total": 426.4,
+        "eta": 35,
+        "items": [
+          "1x Greek Salad",
+          "1x Cold-Pressed Juice"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 1,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "salad",
+          "juice"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 33,
+      "text": "Paneer dish for 3 people under ₹800",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Urban Spice Kitchen",
+        "total": 425.35,
+        "eta": 43
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "groq",
+      "models": [
+        "openai/gpt-oss-120b"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 52293,
+      "modelCalls": 3,
+      "inputTokens": 7647,
+      "outputTokens": 849,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Burger Barn",
+        "total": 729.85,
+        "eta": 33,
+        "items": [
+          "3x Peri Peri Paneer Burger"
+        ]
+      },
+      "agentSpec": {
+        "diet": "veg",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 3,
+        "budgetTotal": 800,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "paneer"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 34,
+      "text": "Food for 10 people in 30 minutes under ₹700",
+      "feasible": false,
+      "authorExpectedFeasible": false,
+      "sensibleCartExists": false,
+      "oracleCheapest": null,
+      "outcome": "correct_decline",
+      "success": true,
+      "status": "declined",
+      "engine": "groq",
+      "models": [
+        "openai/gpt-oss-120b"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 29674,
+      "modelCalls": 4,
+      "inputTokens": 6913,
+      "outputTokens": 1176,
+      "specCorrections": [],
+      "cart": null,
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 10,
+        "budgetTotal": 700,
+        "maxDeliveryMinutes": 30,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": "No restaurant can provide at least 10 dishes within the required 30‑minute delivery window."
+    },
+    {
+      "id": 35,
+      "text": "Two vada pavs and a chai, quick",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Chaat Street",
+        "total": 142.9,
+        "eta": 30
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "groq",
+      "models": [
+        "openai/gpt-oss-120b"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 25814,
+      "modelCalls": 3,
+      "inputTokens": 5756,
+      "outputTokens": 676,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Chaat Street",
+        "total": 204.85,
+        "eta": 30,
+        "items": [
+          "2x Vada Pav",
+          "1x Masala Chai"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [
+          "Indian"
+        ],
+        "spice": null,
+        "partySize": 2,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "vada pav",
+          "chai"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 36,
+      "text": "Healthy veg bowl for 2 under ₹500",
+      "feasible": false,
+      "authorExpectedFeasible": false,
+      "sensibleCartExists": false,
+      "oracleCheapest": null,
+      "outcome": "correct_decline",
+      "success": true,
+      "status": "declined",
+      "engine": "groq",
+      "models": [
+        "openai/gpt-oss-120b"
+      ],
+      "fallbackReason": null,
+      "proposals": 0,
+      "latencyMs": 21694,
+      "modelCalls": 3,
+      "inputTokens": 4360,
+      "outputTokens": 995,
+      "specCorrections": [],
+      "cart": null,
+      "agentSpec": {
+        "diet": "veg",
+        "cuisines": [
+          "Healthy"
+        ],
+        "spice": null,
+        "partySize": 2,
+        "budgetTotal": 500,
+        "maxDeliveryMinutes": null,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": "Budget too low to provide at least one vegetarian healthy dish per person. The cheapest combination of two dishes (Hummus Falafel Wrap ₹229 and Greek Salad ₹239) totals about ₹531 after tax and delivery, exceeding the ₹500 limit."
+    },
+    {
+      "id": 37,
+      "text": "Craving noodles. Me and 2 friends. Max 45 minutes.",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Dragon Bowl",
+        "total": 540.85,
+        "eta": 45
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "rules",
+      "models": [],
+      "fallbackReason": "400 Tool call validation failed: tool call validation failed: parameters for tool search_menus did not match schema: errors: [`/maxItemPrice`: expected number, but got null]",
+      "proposals": 1,
+      "latencyMs": 8600,
+      "modelCalls": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Dragon Bowl",
+        "total": 603.85,
+        "eta": 45,
+        "items": [
+          "1x Veg Hakka Noodles",
+          "2x Veg Spring Rolls"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 3,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": 45,
+        "include": [
+          "noodles"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 38,
+      "text": "Breakfast for the family of 4, nothing fried, south indian",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Dosa Junction",
+        "total": 497.8,
+        "eta": 30
+      },
+      "outcome": "invalid_cart",
+      "success": false,
+      "status": "proposed",
+      "engine": "rules",
+      "models": [],
+      "fallbackReason": "400 Tool call validation failed: tool call validation failed: parameters for tool search_menus did not match schema: errors: [`/maxItemPrice`: expected number, but got null]",
+      "proposals": 1,
+      "latencyMs": 18210,
+      "modelCalls": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Dosa Junction",
+        "total": 413.8,
+        "eta": 30,
+        "items": [
+          "4x Medu Vada"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [
+          "South Indian"
+        ],
+        "spice": null,
+        "partySize": 4,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": null,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [
+        "No fried: Contains fried: Medu Vada"
+      ],
+      "reason": null
+    },
+    {
+      "id": 39,
+      "text": "Gulab jamun and rasmalai for 2",
+      "feasible": false,
+      "authorExpectedFeasible": false,
+      "sensibleCartExists": false,
+      "oracleCheapest": null,
+      "outcome": "correct_decline",
+      "success": true,
+      "status": "declined",
+      "engine": "rules",
+      "models": [],
+      "fallbackReason": "400 Tool call validation failed: tool call validation failed: parameters for tool search_menus did not match schema: errors: [`/maxItemPrice`: expected number, but got null]",
+      "proposals": 0,
+      "latencyMs": 17188,
+      "modelCalls": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "specCorrections": [],
+      "cart": null,
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 2,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "rasmalai",
+          "gulab jamun"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": "No open restaurant has dishes that match the request"
+    },
+    {
+      "id": 40,
+      "text": "Three pizzas for a party, under ₹1000",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Pasta Street",
+        "total": 624.85,
+        "eta": 37
+      },
+      "outcome": "invalid_cart",
+      "success": false,
+      "status": "proposed",
+      "engine": "rules",
+      "models": [],
+      "fallbackReason": "400 Tool call validation failed: tool call validation failed: parameters for tool search_menus did not match schema: errors: [`/maxItemPrice`: expected number, but got null, `/notSpicy`: expected boolean, but got null, `/vegOnly`: expected boolean, but got null]",
+      "proposals": 1,
+      "latencyMs": 17233,
+      "modelCalls": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Pasta Street",
+        "total": 353.95,
+        "eta": 37,
+        "items": [
+          "1x Margherita Pizza"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 1,
+        "budgetTotal": 1000,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "pizza"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [
+        "Enough for 3 people: 1 dishes for 3 people (drinks don't count)"
+      ],
+      "reason": null
+    },
+    {
+      "id": 41,
+      "text": "Something light for my wife and me, she can't handle spice",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Urban Spice Kitchen",
+        "total": 142.9,
+        "eta": 43
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "groq",
+      "models": [
+        "openai/gpt-oss-120b"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 47164,
+      "modelCalls": 3,
+      "inputTokens": 7294,
+      "outputTokens": 708,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Green Bowl",
+        "total": 541.9,
+        "eta": 35,
+        "items": [
+          "2x Greek Salad"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": "no_hot",
+        "partySize": 2,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": null,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 42,
+      "text": "Order 2 masala dosas and 2 filter coffees",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Dosa Junction",
+        "total": 320.35,
+        "eta": 30
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "groq",
+      "models": [
+        "openai/gpt-oss-120b"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 23447,
+      "modelCalls": 3,
+      "inputTokens": 4551,
+      "outputTokens": 590,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Dosa Junction",
+        "total": 413.8,
+        "eta": 30,
+        "items": [
+          "2x Masala Dosa",
+          "2x Filter Coffee"
+        ]
+      },
+      "agentSpec": {
+        "diet": "veg",
+        "cuisines": [
+          "South Indian"
+        ],
+        "spice": null,
+        "partySize": 2,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "dosa",
+          "coffee"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 43,
+      "text": "Veg meal for 5 under ₹500 in 40 minutes",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Chaat Street",
+        "total": 297.25,
+        "eta": 31
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "groq",
+      "models": [
+        "openai/gpt-oss-120b"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 37051,
+      "modelCalls": 3,
+      "inputTokens": 7197,
+      "outputTokens": 1181,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Chaat Street",
+        "total": 360.25,
+        "eta": 31,
+        "items": [
+          "1x Vada Pav",
+          "1x Dahi Puri",
+          "3x Samosa (2 pcs)"
+        ]
+      },
+      "agentSpec": {
+        "diet": "veg",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 5,
+        "budgetTotal": 500,
+        "maxDeliveryMinutes": 40,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 44,
+      "text": "Chicken biryani for 2 in half an hour",
+      "feasible": false,
+      "authorExpectedFeasible": false,
+      "sensibleCartExists": false,
+      "oracleCheapest": null,
+      "outcome": "correct_decline",
+      "success": true,
+      "status": "declined",
+      "engine": "rules",
+      "models": [],
+      "fallbackReason": "429 Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01m541vyn4erna1y0p0yz9cj26` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 6124, Requested 1946. Please try again in 525ms. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing",
+      "proposals": 0,
+      "latencyMs": 4305,
+      "modelCalls": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "specCorrections": [],
+      "cart": null,
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 2,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": 30,
+        "include": [
+          "biryani"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": "No restaurant can deliver within 30 minutes"
+    },
+    {
+      "id": 45,
+      "text": "Pure veg Chinese for 4 under ₹900 within 50 mins",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Dragon Bowl",
+        "total": 623.8,
+        "eta": 45
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "groq",
+      "models": [
+        "openai/gpt-oss-120b"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 12896,
+      "modelCalls": 3,
+      "inputTokens": 4211,
+      "outputTokens": 666,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Dragon Bowl",
+        "total": 875.8,
+        "eta": 45,
+        "items": [
+          "1x Veg Hakka Noodles",
+          "1x Veg Manchurian",
+          "1x Schezwan Veg Fried Rice",
+          "1x Veg Spring Rolls"
+        ]
+      },
+      "agentSpec": {
+        "diet": "veg",
+        "cuisines": [
+          "Chinese"
+        ],
+        "spice": null,
+        "partySize": 4,
+        "budgetTotal": 900,
+        "maxDeliveryMinutes": 50,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 46,
+      "text": "A cheesecake and a waffle, delivered in 30 min",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Sweet Tooth",
+        "total": 468.4,
+        "eta": 30
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "rules",
+      "models": [],
+      "fallbackReason": "400 Tool call validation failed: tool call validation failed: parameters for tool search_menus did not match schema: errors: [`/maxItemPrice`: expected number, but got null]",
+      "proposals": 1,
+      "latencyMs": 7289,
+      "modelCalls": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Sweet Tooth",
+        "total": 468.4,
+        "eta": 30,
+        "items": [
+          "1x Belgian Waffle",
+          "1x Mango Cheesecake"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 1,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": 30,
+        "include": [
+          "waffle",
+          "cheesecake"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 47,
+      "text": "Feed 3 hungry people for ₹300 total",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Urban Spice Kitchen",
+        "total": 194.35,
+        "eta": 43
+      },
+      "outcome": "valid_after_replan",
+      "success": true,
+      "status": "proposed",
+      "engine": "groq",
+      "models": [
+        "openai/gpt-oss-120b"
+      ],
+      "fallbackReason": null,
+      "proposals": 2,
+      "latencyMs": 47149,
+      "modelCalls": 4,
+      "inputTokens": 7769,
+      "outputTokens": 1221,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Chaat Street",
+        "total": 236.35,
+        "eta": 30,
+        "items": [
+          "1x Pani Puri",
+          "1x Vada Pav",
+          "1x Samosa (2 pcs)"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 3,
+        "budgetTotal": 300,
+        "maxDeliveryMinutes": null,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 48,
+      "text": "I'd like fries and a shake, under 200",
+      "feasible": false,
+      "authorExpectedFeasible": false,
+      "sensibleCartExists": false,
+      "oracleCheapest": null,
+      "outcome": "correct_decline",
+      "success": true,
+      "status": "declined",
+      "engine": "groq",
+      "models": [
+        "openai/gpt-oss-120b"
+      ],
+      "fallbackReason": null,
+      "proposals": 0,
+      "latencyMs": 64605,
+      "modelCalls": 4,
+      "inputTokens": 11576,
+      "outputTokens": 957,
+      "specCorrections": [],
+      "cart": null,
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 1,
+        "budgetTotal": 200,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "fries",
+          "shake"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": "Both fries and a shake together exceed the 200 ₹ budget after tax and delivery."
+    },
+    {
+      "id": 49,
+      "text": "Garlic bread for 2, but no garlic please",
+      "feasible": false,
+      "authorExpectedFeasible": false,
+      "sensibleCartExists": false,
+      "oracleCheapest": null,
+      "outcome": "invalid_cart",
+      "success": false,
+      "status": "proposed",
+      "engine": "rules",
+      "models": [],
+      "fallbackReason": "400 Tool call validation failed: tool call validation failed: parameters for tool search_menus did not match schema: errors: [`/maxItemPrice`: expected number, but got null, `/notSpicy`: expected boolean, but got null, `/vegOnly`: expected boolean, but got null]",
+      "proposals": 1,
+      "latencyMs": 4327,
+      "modelCalls": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Chaat Street",
+        "total": 142.9,
+        "eta": 30,
+        "items": [
+          "2x Samosa (2 pcs)"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 2,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": null,
+        "include": [],
+        "exclude": [
+          "garlic"
+        ]
+      },
+      "truthFailures": [
+        "Includes garlic bread: Nothing matching \"garlic bread\""
+      ],
+      "reason": null
+    },
+    {
+      "id": 50,
+      "text": "Dinner for 2 with a spicy dish, no paneer, veg, under ₹600, by 40 minutes",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Chaat Street",
+        "total": 153.4,
+        "eta": 30
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "rules",
+      "models": [],
+      "fallbackReason": "429 Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01m541vyn4erna1y0p0yz9cj26` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 198468, Requested 1958. Please try again in 3m4.031999999s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing",
+      "proposals": 1,
+      "latencyMs": 112,
+      "modelCalls": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Chaat Street",
+        "total": 153.4,
+        "eta": 30,
+        "items": [
+          "1x Vada Pav",
+          "1x Samosa (2 pcs)"
+        ]
+      },
+      "agentSpec": {
+        "diet": "veg",
+        "cuisines": [],
+        "spice": "hot",
+        "partySize": 2,
+        "budgetTotal": 600,
+        "maxDeliveryMinutes": 40,
+        "include": [],
+        "exclude": [
+          "paneer"
+        ]
+      },
+      "truthFailures": [],
+      "reason": null
+    }
+  ]
+}

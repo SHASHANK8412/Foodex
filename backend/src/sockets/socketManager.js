@@ -56,11 +56,14 @@ const emitDemandUpdate = ({ restaurantId, activeOrders, demandLevel, estimatedWa
     return;
   }
 
+  // Required lazily: analyticsService loads models that load this module.
+  const { estimateOrderEta } = require("../services/analyticsService");
   const payload = {
     restaurantId,
     activeOrders,
     demandLevel,
     estimatedWaitMinutes,
+    deliveryMinutes: estimateOrderEta({ restaurant: { estimatedWaitMinutes }, itemCount: 2 }).minutes,
     timestamp: new Date().toISOString(),
   };
 

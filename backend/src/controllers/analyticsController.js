@@ -1,6 +1,8 @@
 const { StatusCodes } = require("http-status-codes");
 const asyncHandler = require("../utils/asyncHandler");
+const mongoose = require("mongoose");
 const analyticsService = require("../services/analyticsService");
+const Restaurant = require("../models/Restaurant");
 
 const getRecommendations = asyncHandler(async (req, res) => {
   const data = await analyticsService.getRecommendations(req.user.userId);
@@ -13,14 +15,28 @@ const getDemandPrediction = asyncHandler(async (req, res) => {
 });
 
 const getDeliveryEstimate = asyncHandler(async (req, res) => {
-  const { distanceKm, itemCount, hourOfDay } = req.query;
+  const { distanceKm, itemCount, hourOfDay, restaurantId } = req.query;
+
+  // With a restaurant, include its live kitchen wait (the same estimate the
+  // ordering agent uses); without one, the generic model estimate.
+  if (restaurantId && mongoose.isValidObjectId(restaurantId)) {
+    const restaurant = await Restaurant.findById(restaurantId).select("estimatedWaitMinutes avgPrepMinutes").lean();
+    if (restaurant) {
+      const eta = analyticsService.estimateOrderEta({ restaurant, itemCount, distanceKm, hourOfDay });
+      return res.status(StatusCodes.OK).json({
+        success: true,
+        data: { source: eta.source, estimatedMinutes: eta.minutes, breakdown: eta },
+      });
+    }
+  }
+
   const data = analyticsService.estimateDeliveryTime({
     distanceKm,
     itemCount,
     hourOfDay,
   });
 
-  res.status(StatusCodes.OK).json({ success: true, data });
+  return res.status(StatusCodes.OK).json({ success: true, data });
 });
 
 const getFrequentlyBoughtTogether = asyncHandler(async (req, res) => {

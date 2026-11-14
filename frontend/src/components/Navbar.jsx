@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { ShoppingBag } from "lucide-react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { logout } from "../redux/slices/authSlice";
@@ -6,8 +7,8 @@ import { setSearchQuery } from "../redux/slices/uiSlice";
 import DarkModeToggle from "./DarkModeToggle";
 
 const navClass = ({ isActive }) =>
-  "rounded-full px-3 py-2 text-sm font-medium transition " +
-  (isActive ? "bg-rose-500 text-white" : "text-slate-700 hover:bg-rose-100 hover:text-rose-700");
+  "whitespace-nowrap rounded-full px-3 py-2 text-sm font-medium transition " +
+  (isActive ? "bg-rose-500 text-white" : "text-slate-700 hover:bg-rose-100 hover:text-rose-700 dark:text-slate-200 dark:hover:bg-slate-800");
 
 const roleLabel = {
   admin: "Admin",
@@ -24,7 +25,8 @@ const Navbar = () => {
     localStorage.getItem("foodex_selected_location") || "All Locations"
   );
   const { user } = useSelector((state) => state.auth);
-  const itemCount = useSelector((state) => state.cart.items.length);
+  // Dishes in the cart, counting quantities (2 × dosa is 2).
+  const itemCount = useSelector((state) => state.cart.items.reduce((sum, item) => sum + item.quantity, 0));
   const searchQuery = useSelector((state) => state.ui.searchQuery);
   const restaurants = useSelector((state) => state.restaurants.restaurants);
 
@@ -65,7 +67,7 @@ const Navbar = () => {
           </div>
         </Link>
 
-        <nav className="hidden items-center gap-2 md:flex">
+        <nav className="hidden items-center gap-1 lg:flex">
           <NavLink to="/" className={navClass} end>
             Home
           </NavLink>
@@ -75,6 +77,11 @@ const Navbar = () => {
           <NavLink to="/orders/track" className={navClass}>
             Tracking
           </NavLink>
+          {(!user || ["user", "admin"].includes(user.role)) && (
+            <NavLink to="/ai-order" className={navClass}>
+              AI Order
+            </NavLink>
+          )}
           {user && (
             <NavLink to="/user-dashboard" className={navClass}>
               Dashboard
@@ -87,7 +94,7 @@ const Navbar = () => {
           )}
         </nav>
 
-        <div className="hidden items-center lg:flex">
+        <div className="hidden items-center 2xl:flex">
           <input
             value={searchQuery}
             onChange={(event) => dispatch(setSearchQuery(event.target.value))}
@@ -96,7 +103,7 @@ const Navbar = () => {
           />
         </div>
 
-        <div className="hidden md:block">
+        <div className="hidden xl:block">
           <select
             value={selectedLocation}
             onChange={(event) => handleLocationChange(event.target.value)}
@@ -112,8 +119,14 @@ const Navbar = () => {
 
         <div className="flex items-center gap-2">
           <DarkModeToggle />
-          <Link to="/cart" className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">
-            Cart ({itemCount})
+          <Link
+            to="/cart"
+            aria-label={`Cart, ${itemCount} ${itemCount === 1 ? "item" : "items"}`}
+            className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-700 sm:px-4"
+          >
+            <ShoppingBag size={16} aria-hidden="true" />
+            <span className="hidden sm:inline">Cart</span>
+            <span className="tabular-nums">{itemCount}</span>
           </Link>
           {!user ? (
             <>
@@ -126,16 +139,18 @@ const Navbar = () => {
             </>
           ) : (
             <>
-              <div className="relative hidden sm:block">
+              <div className="relative">
                 <button
                   type="button"
                   onClick={() => setProfileOpen((prev) => !prev)}
-                  className="flex items-center gap-3 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 dark:border-slate-700 dark:bg-slate-900"
+                  aria-label="Account menu"
+                  aria-expanded={profileOpen}
+                  className="flex items-center gap-3 rounded-full border border-slate-200 bg-slate-50 px-1.5 py-1.5 sm:px-3 dark:border-slate-700 dark:bg-slate-900"
                 >
                   <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-orange-500 to-rose-500 text-xs font-bold uppercase text-white">
                     {user?.name?.charAt(0) || "U"}
                   </span>
-                  <div className="min-w-0 text-left">
+                  <div className="hidden min-w-0 text-left sm:block">
                     <p className="max-w-28 truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{user?.name || "Profile"}</p>
                     <p className="text-xs text-slate-500 dark:text-slate-400">{roleLabel[user?.role] || "User"}</p>
                   </div>
@@ -157,6 +172,23 @@ const Navbar = () => {
                     >
                       Track Orders
                     </Link>
+                    {[
+                      ["admin", "/admin", "Admin dashboard"],
+                      ["admin", "/admin/pipeline", "Data pipeline"],
+                      ["owner", "/restaurant-dashboard", "My restaurant"],
+                      ["delivery", "/delivery", "My deliveries"],
+                    ]
+                      .filter(([role]) => user?.role === role)
+                      .map(([, to, label]) => (
+                        <Link
+                          key={to}
+                          to={to}
+                          onClick={() => setProfileOpen(false)}
+                          className="block rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+                        >
+                          {label}
+                        </Link>
+                      ))}
                     <button
                       type="button"
                       onClick={handleLogout}

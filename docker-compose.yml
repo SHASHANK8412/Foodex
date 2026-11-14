@@ -69,6 +69,8 @@ services:
       RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
       RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
       GOOGLE_GEMINI_API_KEY: ${GOOGLE_GEMINI_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      AGENT_LLM_PROVIDER: ${AGENT_LLM_PROVIDER:-auto}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     volumes:
       # Gold datasets written by the Spark batch job, served by the API.

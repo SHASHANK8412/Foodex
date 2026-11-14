@@ -270,6 +270,102 @@ describe("order lifecycle", () => {
   });
 });
 
+describe("payment methods", () => {
+  const placeAndPay = async (token, paymentMethod, extra = {}) => {
+    const placed = await request(app)
+      .post("/api/orders")
+      .set(auth(token))
+      .send({ ...cart([[fixture.noodles, 1]]), deliveryAddress: address, ...extra });
+    const paid = await request(app).post("/api/orders/verify-payment").set(auth(token)).send({
+      orderId: placed.body.data?.order?._id,
+      razorpayOrderId: placed.body.data?.payment?.razorpayOrderId,
+      razorpayPaymentId: "pay_test",
+      razorpaySignature: "sig_test",
+      paymentMethod,
+    });
+    return { placed, paid };
+  };
+
+  test("records the method the customer paid with", async () => {
+    const token = await login("asha@test.dev", "secret123");
+    const { paid } = await placeAndPay(token, "upi", { contactPhone: "+91 98765 43210" });
+
+    expect(paid.status).toBe(200);
+    const order = await Order.findById(paid.body.data._id);
+    expect(order.paymentMethod).toBe("upi");
+    expect(order.paymentDetails.simulated).toBe(true);
+    expect(order.contactPhone).toBe("9876543210");
+
+    const Payment = require("../models/Payment");
+    expect((await Payment.findOne({ order: order._id })).method).toBe("upi");
+  });
+
+  test("saves the phone to a profile that has none", async () => {
+    const token = await login("asha@test.dev", "secret123");
+    await placeAndPay(token, "card", { contactPhone: "9123456789" });
+
+    expect((await User.findById(fixture.customer._id)).phone).toBe("9123456789");
+  });
+
+  test("an unpaid order can be paid later through the same payment order", async () => {
+    const asha = await login("asha@test.dev", "secret123");
+    const placed = await request(app).post("/api/orders").set(auth(asha)).send({ ...cart([[fixture.noodles, 1]]), deliveryAddress: address });
+    const orderId = placed.body.data.order._id;
+
+    const session = await request(app).post(`/api/orders/${orderId}/payment-session`).set(auth(asha));
+    expect(session.status).toBe(200);
+    // Reuses the Razorpay order rather than creating a new one.
+    expect(session.body.data.payment.razorpayOrderId).toBe(placed.body.data.payment.razorpayOrderId);
+    expect(session.body.data.payment.amount).toBe(placed.body.data.payment.amount);
+
+    const someoneElse = await request(app).post(`/api/orders/${orderId}/payment-session`).set(auth(await login("ravi@test.dev", "secret123")));
+    expect(someoneElse.status).toBe(403);
+
+    await request(app).post("/api/orders/verify-payment").set(auth(asha)).send({
+      orderId,
+      razorpayOrderId: session.body.data.payment.razorpayOrderId,
+      razorpayPaymentId: "pay_later",
+      razorpaySignature: "sig",
+      paymentMethod: "upi",
+    });
+    const again = await request(app).post(`/api/orders/${orderId}/payment-session`).set(auth(asha));
+    expect(again.status).toBe(409); // already paid
+  });
+
+  test("rejects a phone number that is not an Indian mobile", async () => {
+    const token = await login("asha@test.dev", "secret123");
+    const { placed } = await placeAndPay(token, "upi", { contactPhone: "12345" });
+
+    expect(placed.status).toBe(400);
+  });
+
+  test("the admin dashboard breaks payments down by method", async () => {
+    const asha = await login("asha@test.dev", "secret123");
+    await placeAndPay(asha, "upi");
+    await placeAndPay(asha, "upi");
+    await placeAndPay(asha, "card");
+
+    const admin = await login("admin@test.dev", "secret123");
+    const response = await request(app).get("/api/admin/payments/dashboard").set(auth(admin));
+    const byMethod = Object.fromEntries(response.body.data.methodBreakdown.map((row) => [row.method, row]));
+
+    expect(byMethod.upi.count).toBe(2);
+    expect(byMethod.card.count).toBe(1);
+    expect(byMethod.upi.share).toBeCloseTo(0.667, 2);
+  });
+
+  test("Razorpay payment entities are summarised without exposing the full UPI ID", () => {
+    const { describePayment } = require("../services/paymentService");
+
+    expect(describePayment({ method: "upi", vpa: "rahul.sharma@okhdfcbank", upi: { vpa: "rahul.sharma@okhdfcbank", flow: "intent" } })).toEqual({
+      method: "upi",
+      details: { vpaMasked: "ra***@okhdfcbank", upiFlow: "intent" },
+    });
+    expect(describePayment({ method: "card", card: { network: "RuPay", last4: "4242" } }).details).toEqual({ cardNetwork: "RuPay", cardLast4: "4242" });
+    expect(describePayment({ method: "crypto" }).method).toBe("unknown");
+  });
+});
+
 describe("accounts and riders", () => {
   test("registration cannot choose a role or account state", async () => {
     const response = await request(app).post("/api/auth/register").send({

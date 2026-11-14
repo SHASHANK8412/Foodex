@@ -3,11 +3,24 @@ const crypto = require("crypto");
 const env = require("../config/env");
 const Order = require("../models/Order");
 const Payment = require("../models/Payment");
-const { ORDER_STATUS, PAYMENT_STATUS, DELIVERY_PARTNER_STATUSES, canTransition } = require("../constants/order");
+const { ORDER_STATUS, PAYMENT_STATUS, DELIVERY_PARTNER_STATUSES, CHECKOUT_METHODS, canTransition } = require("../constants/order");
 const ROLES = require("../constants/roles");
 const KAFKA_TOPICS = require("../constants/kafkaTopics");
 const ApiError = require("../utils/ApiError");
-const { createRazorpayOrder, verifySignature, verifyWebhookSignature } = require("./paymentService");
+const {
+  createRazorpayOrder,
+  verifySignature,
+  verifyWebhookSignature,
+  fetchPaymentMethod,
+  describePayment,
+} = require("./paymentService");
+const User = require("../models/User");
+
+// "+91 98765 43210" -> "9876543210"; anything that is not an Indian mobile number -> undefined.
+const normalizePhone = (value) => {
+  const digits = String(value || "").replace(/\D/g, "").replace(/^(?:91|0)(?=\d{10}$)/, "");
+  return /^[6-9]\d{9}$/.test(digits) ? digits : undefined;
+};
 const { emitOrderUpdate, emitDeliveryLocation } = require("../sockets/socketManager");
 const { publishEvent } = require("../kafka");
 const { refreshRestaurantDemand } = require("./demandService");
@@ -41,6 +54,7 @@ const upsertPaymentTransaction = async ({
   razorpayOrderId,
   razorpayPaymentId,
   metadata,
+  paymentMethod,
 }) => {
   try {
     await Payment.findOneAndUpdate(
@@ -56,6 +70,7 @@ const upsertPaymentTransaction = async ({
         razorpayOrderId: razorpayOrderId || order.razorpayOrderId,
         razorpayPaymentId: razorpayPaymentId || order.razorpayPaymentId,
         ...(status === PAYMENT_STATUS.PAID ? { paidAt: new Date() } : {}),
+        ...(paymentMethod ? { method: paymentMethod.method, methodDetails: paymentMethod.details } : {}),
         lastEventAt: new Date(),
         metadata,
       },
@@ -159,7 +174,7 @@ const ensureOrderDeliveryLocation = async (order) => {
   return order;
 };
 
-const createOrder = async ({ userId, restaurantId, items, deliveryAddress, couponCode }) => {
+const createOrder = async ({ userId, restaurantId, items, deliveryAddress, couponCode, contactPhone }) => {
   const priced = await pricingService.quote({ restaurantId, items, couponCode, userId });
 
   // The customer saw the coupon as valid in the cart; if it no longer is (expired,
@@ -178,6 +193,7 @@ const createOrder = async ({ userId, restaurantId, items, deliveryAddress, coupo
     items: orderItems,
     deliveryAddress: normalizedDeliveryAddress,
     subtotal,
+    contactPhone: normalizePhone(contactPhone),
     couponCode: priced.coupon?.code,
     discountAmount: priced.discount,
     taxAmount,
@@ -212,6 +228,12 @@ const createOrder = async ({ userId, restaurantId, items, deliveryAddress, coupo
   });
 
   metrics.ordersCreated.inc({ coupon: priced.coupon?.code ? "yes" : "no" });
+
+  // Remember the number for next time (payment prefill), if the profile has none.
+  const phone = normalizePhone(contactPhone);
+  if (phone) {
+    await User.updateOne({ _id: userId, $or: [{ phone: { $exists: false } }, { phone: "" }, { phone: null }] }, { phone });
+  }
   metrics.orderValue.observe(totalAmount);
 
   const populated = await Order.findById(draftOrder._id).populate("restaurant", "name address.location");
@@ -249,7 +271,7 @@ const createOrder = async ({ userId, restaurantId, items, deliveryAddress, coupo
   };
 };
 
-const verifyOrderPayment = async ({ orderId, razorpayOrderId, razorpayPaymentId, razorpaySignature }) => {
+const verifyOrderPayment = async ({ orderId, razorpayOrderId, razorpayPaymentId, razorpaySignature, paymentMethod }) => {
   const order = await Order.findById(orderId);
   if (!order) {
     throw new ApiError(StatusCodes.NOT_FOUND, "Order not found");
@@ -271,7 +293,8 @@ const verifyOrderPayment = async ({ orderId, razorpayOrderId, razorpayPaymentId,
     return Order.findById(order._id).populate("restaurant", "name address.location").populate("user", "name email");
   }
 
-  const isValid = razorpayOrderId.startsWith("mock_order_")
+  const isMock = razorpayOrderId.startsWith("mock_order_");
+  const isValid = isMock
     ? true
     : verifySignature({
         orderId: razorpayOrderId,
@@ -280,7 +303,7 @@ const verifyOrderPayment = async ({ orderId, razorpayOrderId, razorpayPaymentId,
       });
 
   if (!isValid) {
-    metrics.paymentsVerified.inc({ outcome: "failed", source: "checkout" });
+    metrics.paymentsVerified.inc({ outcome: "failed", source: "checkout", method: "unknown" });
     order.paymentStatus = PAYMENT_STATUS.FAILED;
     await order.save();
     await upsertPaymentTransaction({
@@ -293,7 +316,18 @@ const verifyOrderPayment = async ({ orderId, razorpayOrderId, razorpayPaymentId,
     throw new ApiError(StatusCodes.BAD_REQUEST, "Payment verification failed");
   }
 
-  metrics.paymentsVerified.inc({ outcome: "paid", source: "checkout" });
+  // Which method was used: from Razorpay for real payments; in mock mode, the
+  // method the customer picked (there is no real payment to ask about).
+  const method = isMock
+    ? {
+        method: CHECKOUT_METHODS.includes(paymentMethod) ? paymentMethod : "upi",
+        details: { simulated: true },
+      }
+    : await fetchPaymentMethod(razorpayPaymentId);
+
+  metrics.paymentsVerified.inc({ outcome: "paid", source: "checkout", method: method.method });
+  order.paymentMethod = method.method;
+  order.paymentDetails = method.details;
   order.paymentStatus = PAYMENT_STATUS.PAID;
   order.status = ORDER_STATUS.CONFIRMED;
   order.razorpayOrderId = razorpayOrderId;
@@ -312,6 +346,7 @@ const verifyOrderPayment = async ({ orderId, razorpayOrderId, razorpayPaymentId,
     razorpayOrderId,
     razorpayPaymentId,
     metadata: { source: "checkout_verify" },
+    paymentMethod: method,
   });
 
   const populated = await Order.findById(order._id).populate("restaurant", "name address.location").populate("user", "name email");
@@ -490,6 +525,50 @@ const getOrderById = async (orderId, user) => {
   throw new ApiError(StatusCodes.FORBIDDEN, "Not authorized to view this order");
 };
 
+// Lets the customer pay for an order whose payment was cancelled or failed.
+// Razorpay accepts several attempts against one Razorpay order, so the
+// existing one is reused rather than creating a second order.
+const getPaymentSession = async ({ orderId, user }) => {
+  const order = await Order.findById(orderId);
+  if (!order) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Order not found");
+  }
+  if (String(order.user) !== String(user.userId)) {
+    throw new ApiError(StatusCodes.FORBIDDEN, "Not authorized to pay for this order");
+  }
+  if (order.paymentStatus === PAYMENT_STATUS.PAID) {
+    throw new ApiError(StatusCodes.CONFLICT, "This order is already paid");
+  }
+  if (order.status !== ORDER_STATUS.PENDING) {
+    throw new ApiError(StatusCodes.CONFLICT, `This order is ${order.status} and can no longer be paid`);
+  }
+
+  let razorpayOrderId = order.razorpayOrderId;
+  let isMock = String(razorpayOrderId || "").startsWith("mock_order_");
+  if (!razorpayOrderId) {
+    const created = await createRazorpayOrder({
+      amount: Math.round(order.totalAmount * 100),
+      receipt: `foodex_${order._id}`,
+      notes: { orderId: String(order._id), userId: String(order.user) },
+    });
+    razorpayOrderId = created.id;
+    isMock = Boolean(created.isMock);
+    order.razorpayOrderId = razorpayOrderId;
+    await order.save();
+  }
+
+  return {
+    order: { _id: String(order._id), shortId: order.shortId, totalAmount: order.totalAmount },
+    payment: {
+      keyId: env.razorpayKeyId || "",
+      razorpayOrderId,
+      amount: Math.round(order.totalAmount * 100),
+      currency: "INR",
+      isMock,
+    },
+  };
+};
+
 const getPaymentDiagnostics = async ({ orderId, user }) => {
   const order = await getOrderById(orderId, user);
 
@@ -585,6 +664,9 @@ const processRazorpayWebhook = async ({ rawBody, signature }) => {
       !order.razorpaySignature;
 
     if (shouldUpdate) {
+      const method = describePayment(entity);
+      order.paymentMethod = method.method;
+      order.paymentDetails = method.details;
       order.paymentStatus = PAYMENT_STATUS.PAID;
       order.status = ORDER_STATUS.CONFIRMED;
       order.razorpayPaymentId = entity.id;
@@ -605,6 +687,7 @@ const processRazorpayWebhook = async ({ rawBody, signature }) => {
         razorpayOrderId: entity.order_id,
         razorpayPaymentId: entity.id,
         metadata: { source: "webhook", event },
+        paymentMethod: method,
       });
 
       const populated = await Order.findById(order._id)
@@ -657,6 +740,8 @@ const processRazorpayWebhook = async ({ rawBody, signature }) => {
 };
 
 module.exports = {
+  normalizePhone,
+  getPaymentSession,
   publishOrderStatusEvent,
   createOrder,
   verifyOrderPayment,

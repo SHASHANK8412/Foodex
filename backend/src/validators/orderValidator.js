@@ -1,5 +1,5 @@
 const { body } = require("express-validator");
-const { ORDER_STATUS } = require("../constants/order");
+const { ORDER_STATUS, CHECKOUT_METHODS } = require("../constants/order");
 
 const createOrderValidator = [
   body("restaurantId").isMongoId().withMessage("Valid restaurantId is required"),
@@ -11,6 +11,11 @@ const createOrderValidator = [
   body("deliveryAddress.state").notEmpty().withMessage("Delivery state is required"),
   body("deliveryAddress.postalCode").notEmpty().withMessage("Delivery postal code is required"),
   body("couponCode").optional({ values: "falsy" }).isString().isLength({ max: 32 }),
+  body("contactPhone")
+    .optional({ values: "falsy" })
+    .customSanitizer((value) => String(value).replace(/[\s-]/g, ""))
+    .matches(/^(?:\+?91|0)?[6-9]\d{9}$/)
+    .withMessage("Enter a 10-digit Indian mobile number"),
 ];
 
 const quoteValidator = [
@@ -26,6 +31,7 @@ const verifyPaymentValidator = [
   body("razorpayOrderId").notEmpty().withMessage("razorpayOrderId is required"),
   body("razorpayPaymentId").notEmpty().withMessage("razorpayPaymentId is required"),
   body("razorpaySignature").notEmpty().withMessage("razorpaySignature is required"),
+  body("paymentMethod").optional().isIn(CHECKOUT_METHODS),
 ];
 
 const updateStatusValidator = [

@@ -33,7 +33,7 @@ const getPaymentDashboard = async ({ from, to, userId, restaurantId, status }) =
     query.status = status;
   }
 
-  const [transactions, totals, dailySeries, monthlySeries] = await Promise.all([
+  const [transactions, totals, dailySeries, monthlySeries, byMethod] = await Promise.all([
     Payment.find(query)
       .populate("user", "name email")
       .populate("restaurant", "name")
@@ -90,7 +90,14 @@ const getPaymentDashboard = async ({ from, to, userId, restaurantId, status }) =
       },
       { $sort: { "_id.month": 1 } },
     ]),
+    Payment.aggregate([
+      { $match: { ...query, status: "paid" } },
+      { $group: { _id: { $ifNull: ["$method", "unknown"] }, count: { $sum: 1 }, revenue: { $sum: "$amount" } } },
+      { $sort: { count: -1 } },
+    ]),
   ]);
+
+  const paidCount = byMethod.reduce((sum, row) => sum + row.count, 0);
 
   const summary = totals[0] || {
     grossRevenue: 0,
@@ -105,6 +112,12 @@ const getPaymentDashboard = async ({ from, to, userId, restaurantId, status }) =
       date: item._id.day,
       revenue: item.revenue,
       count: item.count,
+    })),
+    methodBreakdown: byMethod.map((row) => ({
+      method: row._id,
+      count: row.count,
+      revenue: row.revenue,
+      share: paidCount ? Math.round((row.count / paidCount) * 1000) / 1000 : 0,
     })),
     monthlySeries: monthlySeries.map((item) => ({
       month: item._id.month,

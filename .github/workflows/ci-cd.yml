@@ -40,6 +40,12 @@ jobs:
           NODE_ENV: test
         run: npm test
 
+      - name: Evaluate the ordering agent (rule-based planner, 50 requests)
+        working-directory: backend
+        run: |
+          npm run agent:eval
+          cat src/agent/eval/results/rules.md >> "$GITHUB_STEP_SUMMARY"
+
       - name: Run frontend tests
         working-directory: frontend
         env:
