@@ -120,6 +120,23 @@ const limiter = rateLimit(limiterOptions);
 
 app.use("/api", limiter);
 
+// Opening the API's address in a browser shows what it is and where to go,
+// rather than a bare "Route not found".
+const apiIndex = (req, res) => {
+  const base = `${req.protocol}://${req.get("host")}`;
+  res.json({
+    success: true,
+    service: "Foodex API",
+    status: "running",
+    docs: `${base}/api/docs`,
+    health: `${base}/api/health/ready`,
+    graphql: `${base}${env.graphqlPath}`,
+    webApp: env.clientUrl,
+  });
+};
+app.get("/", apiIndex);
+app.get("/api", apiIndex);
+
 app.use("/api", routes);
 
 module.exports = app;
