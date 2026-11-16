@@ -1,0 +1,38 @@
+import { io } from "socket.io-client";
+
+let socket = null;
+
+export const connectSocket = (token) => {
+  if (!token) {
+    return null;
+  }
+
+  if (socket) {
+    return socket;
+  }
+
+  const socketBaseUrl =
+    import.meta.env.VITE_SOCKET_URL || (import.meta.env.PROD ? window.location.origin : "http://localhost:5000");
+
+  socket = io(socketBaseUrl, {
+    autoConnect: true,
+    path: "/socket.io",
+    transports: ["polling"],
+    upgrade: false,
+    withCredentials: true,
+    auth: {
+      token,
+    },
+  });
+
+  return socket;
+};
+
+export const disconnectSocket = () => {
+  if (socket) {
+    socket.disconnect();
+    socket = null;
+  }
+};
+
+export const getSocket = () => socket;

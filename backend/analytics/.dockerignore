@@ -1,0 +1,2 @@
+# The image copies nothing from this folder: the jobs are bind-mounted at run time.
+**

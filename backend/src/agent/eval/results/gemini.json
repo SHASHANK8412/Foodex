@@ -1,0 +1,2340 @@
+{
+  "summary": {
+    "engine": "gemini",
+    "models": [
+      "gemini-3.5-flash-lite"
+    ],
+    "ranAt": "2026-11-13T15:47:57.437Z",
+    "requests": 50,
+    "successes": 47,
+    "feasible": {
+      "total": 38,
+      "validFirstTry": 32,
+      "validAfterReplan": 4,
+      "invalidCart": 0,
+      "missed": 2
+    },
+    "infeasible": {
+      "total": 12,
+      "correctlyDeclined": 11,
+      "invalidCart": 1
+    },
+    "latency": {
+      "meanMs": 9075,
+      "p50Ms": 5040,
+      "p95Ms": 29290
+    },
+    "meanModelCalls": 2.14,
+    "totalTokens": 382273,
+    "specCorrections": 1,
+    "fallbacks": 3,
+    "llmOnly": {
+      "answered": 47,
+      "successes": 44
+    },
+    "errors": 0,
+    "oracleDisagreements": [],
+    "ambiguousCases": []
+  },
+  "rows": [
+    {
+      "id": 1,
+      "text": "Something spicy and veg for 3 people, under ₹600, delivered in 30 minutes",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Chaat Street",
+        "total": 204.85,
+        "eta": 30
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 20453,
+      "modelCalls": 2,
+      "inputTokens": 7279,
+      "outputTokens": 170,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Dosa Junction",
+        "total": 509.35,
+        "eta": 30,
+        "items": [
+          "3x Mysore Masala Dosa"
+        ]
+      },
+      "agentSpec": {
+        "diet": "veg",
+        "cuisines": [],
+        "spice": "hot",
+        "partySize": 3,
+        "budgetTotal": 600,
+        "maxDeliveryMinutes": 30,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 2,
+      "text": "pizza for two under ₹900",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Pasta Street",
+        "total": 489.4,
+        "eta": 37
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 29290,
+      "modelCalls": 2,
+      "inputTokens": 8294,
+      "outputTokens": 182,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Pasta Street",
+        "total": 720.4,
+        "eta": 37,
+        "items": [
+          "1x Farmhouse Pizza",
+          "1x Margherita Pizza"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 2,
+        "budgetTotal": 900,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "pizza"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 3,
+      "text": "biryani for me",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Urban Spice Kitchen",
+        "total": 332.95,
+        "eta": 43
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 23745,
+      "modelCalls": 2,
+      "inputTokens": 8280,
+      "outputTokens": 136,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Urban Spice Kitchen",
+        "total": 332.95,
+        "eta": 43,
+        "items": [
+          "1x Chicken Biryani"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 1,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "biryani"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 4,
+      "text": "Italian dinner for me and my wife, she's vegetarian, around ₹700",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Pasta Street",
+        "total": 310.9,
+        "eta": 37
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 19963,
+      "modelCalls": 2,
+      "inputTokens": 3366,
+      "outputTokens": 190,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Pasta Street",
+        "total": 625.9,
+        "eta": 37,
+        "items": [
+          "1x Arrabbiata Penne",
+          "1x Margherita Pizza"
+        ]
+      },
+      "agentSpec": {
+        "diet": "veg",
+        "cuisines": [
+          "Italian"
+        ],
+        "spice": null,
+        "partySize": 2,
+        "budgetTotal": 700,
+        "maxDeliveryMinutes": null,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 5,
+      "text": "Quick South Indian breakfast for 4, ₹150 each",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Dosa Junction",
+        "total": 413.8,
+        "eta": 30
+      },
+      "outcome": "missed",
+      "success": false,
+      "status": "declined",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 2,
+      "latencyMs": 48918,
+      "modelCalls": 4,
+      "inputTokens": 8728,
+      "outputTokens": 465,
+      "specCorrections": [],
+      "cart": null,
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [
+          "South Indian"
+        ],
+        "spice": null,
+        "partySize": 4,
+        "budgetTotal": 600,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "breakfast"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": "The menu does not contain any item matching the keyword 'breakfast'."
+    },
+    {
+      "id": 6,
+      "text": "Burgers for 2, no chicken, not too spicy",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Burger Barn",
+        "total": 247.9,
+        "eta": 33
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 45642,
+      "modelCalls": 2,
+      "inputTokens": 3285,
+      "outputTokens": 170,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Burger Barn",
+        "total": 394.9,
+        "eta": 33,
+        "items": [
+          "2x Veg Cheese Burger"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [
+          "Burgers"
+        ],
+        "spice": "no_hot",
+        "partySize": 2,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": null,
+        "include": [],
+        "exclude": [
+          "chicken"
+        ]
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 7,
+      "text": "Chinese for 3 people, budget 700",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Dragon Bowl",
+        "total": 477.85,
+        "eta": 45
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 28084,
+      "modelCalls": 2,
+      "inputTokens": 3501,
+      "outputTokens": 214,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Dragon Bowl",
+        "total": 656.35,
+        "eta": 45,
+        "items": [
+          "1x Veg Manchurian",
+          "1x Veg Spring Rolls",
+          "1x Veg Hakka Noodles"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [
+          "Chinese"
+        ],
+        "spice": null,
+        "partySize": 3,
+        "budgetTotal": 700,
+        "maxDeliveryMinutes": null,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 8,
+      "text": "veg food for 3 delivered in 20 minutes",
+      "feasible": false,
+      "authorExpectedFeasible": false,
+      "sensibleCartExists": false,
+      "oracleCheapest": null,
+      "outcome": "correct_decline",
+      "success": true,
+      "status": "declined",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 0,
+      "latencyMs": 6532,
+      "modelCalls": 2,
+      "inputTokens": 7236,
+      "outputTokens": 103,
+      "specCorrections": [],
+      "cart": null,
+      "agentSpec": {
+        "diet": "veg",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 3,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": 20,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": "All available restaurants have a delivery time of 30 minutes or more, but the maximum delivery time requested is 20 minutes."
+    },
+    {
+      "id": 9,
+      "text": "dinner for 4 under ₹100",
+      "feasible": false,
+      "authorExpectedFeasible": false,
+      "sensibleCartExists": false,
+      "oracleCheapest": null,
+      "outcome": "correct_decline",
+      "success": true,
+      "status": "declined",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 0,
+      "latencyMs": 2835,
+      "modelCalls": 2,
+      "inputTokens": 7991,
+      "outputTokens": 158,
+      "specCorrections": [
+        "budgetTotal"
+      ],
+      "cart": null,
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 4,
+        "budgetTotal": 100,
+        "maxDeliveryMinutes": null,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": "A budget of ₹100 is too low to feed 4 people (each requiring at least one dish), as the delivery fee alone is ₹40, leaving only ₹60 for 4 dishes (under ₹15 per dish)."
+    },
+    {
+      "id": 10,
+      "text": "Just vegetarian food for one, anything under 200 rupees",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Urban Spice Kitchen",
+        "total": 91.45,
+        "eta": 43
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 3449,
+      "modelCalls": 2,
+      "inputTokens": 5424,
+      "outputTokens": 156,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Dosa Junction",
+        "total": 154.45,
+        "eta": 30,
+        "items": [
+          "1x Curd Rice"
+        ]
+      },
+      "agentSpec": {
+        "diet": "veg",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 1,
+        "budgetTotal": 200,
+        "maxDeliveryMinutes": null,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 11,
+      "text": "Feed six of us for under ₹1,000, whatever's fastest",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Urban Spice Kitchen",
+        "total": 348.7,
+        "eta": 45
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 6975,
+      "modelCalls": 2,
+      "inputTokens": 8011,
+      "outputTokens": 205,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Dosa Junction",
+        "total": 894.7,
+        "eta": 32,
+        "items": [
+          "4x Masala Dosa",
+          "2x Mysore Masala Dosa"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 6,
+        "budgetTotal": 1000,
+        "maxDeliveryMinutes": null,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 12,
+      "text": "Something sweet for two",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Urban Spice Kitchen",
+        "total": 195.4,
+        "eta": 43
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 3915,
+      "modelCalls": 2,
+      "inputTokens": 8307,
+      "outputTokens": 194,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Sweet Tooth",
+        "total": 300.4,
+        "eta": 30,
+        "items": [
+          "1x Chocolate Brownie",
+          "1x Rasmalai"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 2,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "sweet"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 13,
+      "text": "A pizza and garlic bread for 2, under 800",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Pasta Street",
+        "total": 489.4,
+        "eta": 37
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 9415,
+      "modelCalls": 2,
+      "inputTokens": 3591,
+      "outputTokens": 233,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Pasta Street",
+        "total": 624.85,
+        "eta": 37,
+        "items": [
+          "2x Garlic Bread",
+          "1x Margherita Pizza"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [
+          "Italian"
+        ],
+        "spice": null,
+        "partySize": 2,
+        "budgetTotal": 800,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "pizza",
+          "garlic bread"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 14,
+      "text": "Hot and spicy chicken for 2, under ₹700, within 45 min",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Urban Spice Kitchen",
+        "total": 384.4,
+        "eta": 43
+      },
+      "outcome": "valid_after_replan",
+      "success": true,
+      "status": "proposed",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 2,
+      "latencyMs": 6716,
+      "modelCalls": 3,
+      "inputTokens": 15482,
+      "outputTokens": 292,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Urban Spice Kitchen",
+        "total": 625.9,
+        "eta": 43,
+        "items": [
+          "2x Chicken Biryani"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": "hot",
+        "partySize": 2,
+        "budgetTotal": 700,
+        "maxDeliveryMinutes": 45,
+        "include": [
+          "chicken"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 15,
+      "text": "No onion, no garlic veg meal for one under ₹300",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Urban Spice Kitchen",
+        "total": 91.45,
+        "eta": 43
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 3098,
+      "modelCalls": 2,
+      "inputTokens": 7340,
+      "outputTokens": 176,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Dosa Junction",
+        "total": 175.45,
+        "eta": 30,
+        "items": [
+          "1x Masala Dosa"
+        ]
+      },
+      "agentSpec": {
+        "diet": "veg",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 1,
+        "budgetTotal": 300,
+        "maxDeliveryMinutes": null,
+        "include": [],
+        "exclude": [
+          "onion",
+          "garlic"
+        ]
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 16,
+      "text": "I want dosa and filter coffee for 2 people",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Dosa Junction",
+        "total": 320.35,
+        "eta": 30
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 11975,
+      "modelCalls": 2,
+      "inputTokens": 8306,
+      "outputTokens": 186,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Dosa Junction",
+        "total": 413.8,
+        "eta": 30,
+        "items": [
+          "2x Masala Dosa",
+          "2x Filter Coffee"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 2,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "dosa",
+          "filter coffee"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 17,
+      "text": "Lunch for the team of 8, all veg, under ₹2000, within an hour",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Urban Spice Kitchen",
+        "total": 451.6,
+        "eta": 47
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 7348,
+      "modelCalls": 2,
+      "inputTokens": 7267,
+      "outputTokens": 176,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Dosa Junction",
+        "total": 1123.6,
+        "eta": 34,
+        "items": [
+          "8x Masala Dosa"
+        ]
+      },
+      "agentSpec": {
+        "diet": "veg",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 8,
+        "budgetTotal": 2000,
+        "maxDeliveryMinutes": 60,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 18,
+      "text": "Something healthy for me, no tofu",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Green Bowl",
+        "total": 280.45,
+        "eta": 35
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 3787,
+      "modelCalls": 2,
+      "inputTokens": 3420,
+      "outputTokens": 213,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Green Bowl",
+        "total": 531.4,
+        "eta": 35,
+        "items": [
+          "1x Greek Salad",
+          "1x Hummus Falafel Wrap"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [
+          "Healthy",
+          "Salads"
+        ],
+        "spice": null,
+        "partySize": 1,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": null,
+        "include": [],
+        "exclude": [
+          "tofu"
+        ]
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 19,
+      "text": "Pasta for 3 under ₹400",
+      "feasible": false,
+      "authorExpectedFeasible": false,
+      "sensibleCartExists": false,
+      "oracleCheapest": null,
+      "outcome": "correct_decline",
+      "success": true,
+      "status": "declined",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 8487,
+      "modelCalls": 3,
+      "inputTokens": 15478,
+      "outputTokens": 302,
+      "specCorrections": [],
+      "cart": null,
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 3,
+        "budgetTotal": 400,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "pasta"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": "It is not possible to feed 3 people pasta under ₹400, as each person needs at least one dish and the cheapest pasta available is ₹259 per portion."
+    },
+    {
+      "id": 20,
+      "text": "Chilli paneer and noodles for two, veg, under ₹600",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Dragon Bowl",
+        "total": 510.4,
+        "eta": 45
+      },
+      "outcome": "valid_after_replan",
+      "success": true,
+      "status": "proposed",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 2,
+      "latencyMs": 5425,
+      "modelCalls": 3,
+      "inputTokens": 13959,
+      "outputTokens": 360,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Dragon Bowl",
+        "total": 510.4,
+        "eta": 45,
+        "items": [
+          "1x Chilli Paneer",
+          "1x Veg Hakka Noodles"
+        ]
+      },
+      "agentSpec": {
+        "diet": "veg",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 2,
+        "budgetTotal": 600,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "chilli paneer",
+          "noodles"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 21,
+      "text": "Mild food for my 2 kids and me, under 500",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Urban Spice Kitchen",
+        "total": 194.35,
+        "eta": 43
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 6346,
+      "modelCalls": 2,
+      "inputTokens": 6816,
+      "outputTokens": 254,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Dosa Junction",
+        "total": 435.85,
+        "eta": 30,
+        "items": [
+          "1x Masala Dosa",
+          "1x Rava Uttapam",
+          "1x Curd Rice"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": "no_hot",
+        "partySize": 3,
+        "budgetTotal": 500,
+        "maxDeliveryMinutes": null,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 22,
+      "text": "Get me a burger in 25 minutes",
+      "feasible": false,
+      "authorExpectedFeasible": false,
+      "sensibleCartExists": false,
+      "oracleCheapest": null,
+      "outcome": "correct_decline",
+      "success": true,
+      "status": "declined",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 0,
+      "latencyMs": 3485,
+      "modelCalls": 2,
+      "inputTokens": 3558,
+      "outputTokens": 130,
+      "specCorrections": [],
+      "cart": null,
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [
+          "Burgers"
+        ],
+        "spice": null,
+        "partySize": 1,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": 25,
+        "include": [
+          "burger"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": "The customer requested delivery within 25 minutes, but the only burger restaurant available (Burger Barn) takes 33 minutes for delivery."
+    },
+    {
+      "id": 23,
+      "text": "Biryani for 4 within 40 minutes",
+      "feasible": false,
+      "authorExpectedFeasible": false,
+      "sensibleCartExists": false,
+      "oracleCheapest": null,
+      "outcome": "correct_decline",
+      "success": true,
+      "status": "declined",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 0,
+      "latencyMs": 5089,
+      "modelCalls": 3,
+      "inputTokens": 9967,
+      "outputTokens": 206,
+      "specCorrections": [],
+      "cart": null,
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [
+          "Biryani"
+        ],
+        "spice": null,
+        "partySize": 4,
+        "budgetTotal": 40,
+        "maxDeliveryMinutes": 40,
+        "include": [
+          "biryani"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": "No restaurant offers biryani within 40 minutes and a budget of ₹40 (minimum possible order for 4 people with biryani would be well over ₹1,000 including tax and delivery)."
+    },
+    {
+      "id": 24,
+      "text": "Veg pizza without mushrooms for 2",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Pasta Street",
+        "total": 489.4,
+        "eta": 37
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 3400,
+      "modelCalls": 2,
+      "inputTokens": 7558,
+      "outputTokens": 195,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Pasta Street",
+        "total": 489.4,
+        "eta": 37,
+        "items": [
+          "1x Garlic Bread",
+          "1x Margherita Pizza"
+        ]
+      },
+      "agentSpec": {
+        "diet": "veg",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 2,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "pizza"
+        ],
+        "exclude": [
+          "mushroom"
+        ]
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 25,
+      "text": "Pepperoni pizza, but I'm vegetarian",
+      "feasible": false,
+      "authorExpectedFeasible": false,
+      "sensibleCartExists": false,
+      "oracleCheapest": null,
+      "outcome": "invalid_cart",
+      "success": false,
+      "status": "proposed",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 11299,
+      "modelCalls": 2,
+      "inputTokens": 7489,
+      "outputTokens": 144,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Pasta Street",
+        "total": 353.95,
+        "eta": 37,
+        "items": [
+          "1x Margherita Pizza"
+        ]
+      },
+      "agentSpec": {
+        "diet": "veg",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 1,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "pizza"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [
+        "Includes pepperoni: Nothing matching \"pepperoni\""
+      ],
+      "reason": null
+    },
+    {
+      "id": 26,
+      "text": "Desserts for 5 people under ₹800",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Urban Spice Kitchen",
+        "total": 349.75,
+        "eta": 44
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 2860,
+      "modelCalls": 2,
+      "inputTokens": 3231,
+      "outputTokens": 231,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Sweet Tooth",
+        "total": 696.25,
+        "eta": 31,
+        "items": [
+          "3x Chocolate Brownie",
+          "2x Rasmalai"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [
+          "Desserts"
+        ],
+        "spice": null,
+        "partySize": 5,
+        "budgetTotal": 800,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "desserts"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 27,
+      "text": "Chai and samosa for 3",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Chaat Street",
+        "total": 235.3,
+        "eta": 30
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 3765,
+      "modelCalls": 2,
+      "inputTokens": 8301,
+      "outputTokens": 194,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Chaat Street",
+        "total": 317.2,
+        "eta": 32,
+        "items": [
+          "3x Samosa (2 pcs)",
+          "3x Masala Chai"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 3,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "chai",
+          "samosa"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 28,
+      "text": "I have ₹250, feed me something filling",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Urban Spice Kitchen",
+        "total": 91.45,
+        "eta": 43
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 3218,
+      "modelCalls": 2,
+      "inputTokens": 8008,
+      "outputTokens": 165,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Dosa Junction",
+        "total": 175.45,
+        "eta": 30,
+        "items": [
+          "1x Masala Dosa"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 1,
+        "budgetTotal": 250,
+        "maxDeliveryMinutes": null,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 29,
+      "text": "Romantic Italian dinner for two, with dessert, under ₹1,200",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Pasta Street",
+        "total": 373.9,
+        "eta": 37
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 6187,
+      "modelCalls": 2,
+      "inputTokens": 3535,
+      "outputTokens": 258,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Pasta Street",
+        "total": 824.35,
+        "eta": 37,
+        "items": [
+          "1x Tiramisu",
+          "1x Arrabbiata Penne",
+          "1x Margherita Pizza"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [
+          "Italian"
+        ],
+        "spice": null,
+        "partySize": 2,
+        "budgetTotal": 1200,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "dessert"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 30,
+      "text": "Something spicy for one, delivered within 30 minutes",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Chaat Street",
+        "total": 101.95,
+        "eta": 30
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 3141,
+      "modelCalls": 2,
+      "inputTokens": 8019,
+      "outputTokens": 176,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Dosa Junction",
+        "total": 196.45,
+        "eta": 30,
+        "items": [
+          "1x Mysore Masala Dosa"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": "hot",
+        "partySize": 1,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": 30,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 31,
+      "text": "Non-veg Chinese for 2, under 650",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Dragon Bowl",
+        "total": 331.9,
+        "eta": 45
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 2704,
+      "modelCalls": 2,
+      "inputTokens": 3528,
+      "outputTokens": 218,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Dragon Bowl",
+        "total": 604.9,
+        "eta": 45,
+        "items": [
+          "1x Schezwan Chicken Noodles",
+          "1x Kung Pao Chicken"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [
+          "Chinese"
+        ],
+        "spice": null,
+        "partySize": 2,
+        "budgetTotal": 650,
+        "maxDeliveryMinutes": null,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 32,
+      "text": "Salad and a cold-pressed juice, just for me",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Green Bowl",
+        "total": 426.4,
+        "eta": 35
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 3199,
+      "modelCalls": 2,
+      "inputTokens": 8305,
+      "outputTokens": 175,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Green Bowl",
+        "total": 426.4,
+        "eta": 35,
+        "items": [
+          "1x Greek Salad",
+          "1x Cold-Pressed Juice"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 1,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "salad",
+          "juice"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 33,
+      "text": "Paneer dish for 3 people under ₹800",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Urban Spice Kitchen",
+        "total": 425.35,
+        "eta": 43
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 2582,
+      "modelCalls": 2,
+      "inputTokens": 7527,
+      "outputTokens": 245,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Urban Spice Kitchen",
+        "total": 789.7,
+        "eta": 45,
+        "items": [
+          "3x Butter Naan",
+          "2x Jeera Rice",
+          "1x Paneer Tikka Masala"
+        ]
+      },
+      "agentSpec": {
+        "diet": "veg",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 3,
+        "budgetTotal": 800,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "paneer"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 34,
+      "text": "Food for 10 people in 30 minutes under ₹700",
+      "feasible": false,
+      "authorExpectedFeasible": false,
+      "sensibleCartExists": false,
+      "oracleCheapest": null,
+      "outcome": "correct_decline",
+      "success": true,
+      "status": "declined",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 4977,
+      "modelCalls": 3,
+      "inputTokens": 14987,
+      "outputTokens": 372,
+      "specCorrections": [],
+      "cart": null,
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 10,
+        "budgetTotal": 700,
+        "maxDeliveryMinutes": 30,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": "It is impossible to feed 10 people (requiring at least 10 dishes) within a ₹700 budget and 30-minute delivery time. The cheapest dishes available cost around ₹49-₹59, and even 10 of the cheapest items (plus 40 INR delivery and 5% tax) exceed the ₹700 budget, while faster restaurants like Dosa Junction have items starting at ₹89 (total for 10 items would be over ₹1,350)."
+    },
+    {
+      "id": 35,
+      "text": "Two vada pavs and a chai, quick",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Chaat Street",
+        "total": 142.9,
+        "eta": 30
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 2867,
+      "modelCalls": 2,
+      "inputTokens": 8369,
+      "outputTokens": 191,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Chaat Street",
+        "total": 204.85,
+        "eta": 30,
+        "items": [
+          "2x Vada Pav",
+          "1x Masala Chai"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 2,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "vada pav",
+          "chai"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 36,
+      "text": "Healthy veg bowl for 2 under ₹500",
+      "feasible": false,
+      "authorExpectedFeasible": false,
+      "sensibleCartExists": false,
+      "oracleCheapest": null,
+      "outcome": "correct_decline",
+      "success": true,
+      "status": "declined",
+      "engine": "rules",
+      "models": [],
+      "fallbackReason": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://aistudio.google.com/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 15, model: gemini-3.5-flash-lite, description: Generate content requests per minute limit exceeded on Free Tier. See https://aistudio.google.com/docs/rate-limits.\nPlease retry in 17.899490681s.",
+      "proposals": 1,
+      "latencyMs": 21629,
+      "modelCalls": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "specCorrections": [],
+      "cart": null,
+      "agentSpec": {
+        "diet": "veg",
+        "cuisines": [
+          "Healthy"
+        ],
+        "spice": null,
+        "partySize": 2,
+        "budgetTotal": 500,
+        "maxDeliveryMinutes": null,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": "Every option is over the budget"
+    },
+    {
+      "id": 37,
+      "text": "Craving noodles. Me and 2 friends. Max 45 minutes.",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Dragon Bowl",
+        "total": 540.85,
+        "eta": 45
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 6028,
+      "modelCalls": 2,
+      "inputTokens": 8328,
+      "outputTokens": 195,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Dragon Bowl",
+        "total": 719.35,
+        "eta": 45,
+        "items": [
+          "1x Schezwan Chicken Noodles",
+          "2x Veg Hakka Noodles"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 3,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": 45,
+        "include": [
+          "noodles"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 38,
+      "text": "Breakfast for the family of 4, nothing fried, south indian",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Dosa Junction",
+        "total": 497.8,
+        "eta": 30
+      },
+      "outcome": "valid_after_replan",
+      "success": true,
+      "status": "proposed",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 2,
+      "latencyMs": 7854,
+      "modelCalls": 4,
+      "inputTokens": 8384,
+      "outputTokens": 429,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Dosa Junction",
+        "total": 560.8,
+        "eta": 30,
+        "items": [
+          "2x Masala Dosa",
+          "2x Ghee Podi Idli"
+        ]
+      },
+      "agentSpec": {
+        "diet": "veg",
+        "cuisines": [
+          "South Indian"
+        ],
+        "spice": null,
+        "partySize": 4,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "idli",
+          "dosa"
+        ],
+        "exclude": [
+          "fried"
+        ]
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 39,
+      "text": "Gulab jamun and rasmalai for 2",
+      "feasible": false,
+      "authorExpectedFeasible": false,
+      "sensibleCartExists": false,
+      "oracleCheapest": null,
+      "outcome": "correct_decline",
+      "success": true,
+      "status": "declined",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 5040,
+      "modelCalls": 3,
+      "inputTokens": 15503,
+      "outputTokens": 290,
+      "specCorrections": [],
+      "cart": null,
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 2,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "gulab jamun",
+          "rasmalai"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": "No single restaurant offers both Gulab Jamun and Rasmalai on its menu."
+    },
+    {
+      "id": 40,
+      "text": "Three pizzas for a party, under ₹1000",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Pasta Street",
+        "total": 624.85,
+        "eta": 37
+      },
+      "outcome": "valid_after_replan",
+      "success": true,
+      "status": "proposed",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 2,
+      "latencyMs": 4120,
+      "modelCalls": 3,
+      "inputTokens": 5918,
+      "outputTokens": 264,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Pasta Street",
+        "total": 981.85,
+        "eta": 37,
+        "items": [
+          "3x Margherita Pizza"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [
+          "Italian"
+        ],
+        "spice": null,
+        "partySize": 3,
+        "budgetTotal": 1000,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "pizza"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 41,
+      "text": "Something light for my wife and me, she can't handle spice",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Urban Spice Kitchen",
+        "total": 142.9,
+        "eta": 43
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 4362,
+      "modelCalls": 2,
+      "inputTokens": 6799,
+      "outputTokens": 192,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Dosa Junction",
+        "total": 289.9,
+        "eta": 30,
+        "items": [
+          "1x Masala Dosa",
+          "1x Curd Rice"
+        ]
+      },
+      "agentSpec": {
+        "diet": "veg",
+        "cuisines": [],
+        "spice": "no_hot",
+        "partySize": 2,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": null,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 42,
+      "text": "Order 2 masala dosas and 2 filter coffees",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Dosa Junction",
+        "total": 320.35,
+        "eta": 30
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 3673,
+      "modelCalls": 2,
+      "inputTokens": 8310,
+      "outputTokens": 180,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Dosa Junction",
+        "total": 413.8,
+        "eta": 30,
+        "items": [
+          "2x Masala Dosa",
+          "2x Filter Coffee"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 2,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "masala dosa",
+          "filter coffee"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 43,
+      "text": "Veg meal for 5 under ₹500 in 40 minutes",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Chaat Street",
+        "total": 297.25,
+        "eta": 31
+      },
+      "outcome": "missed",
+      "success": false,
+      "status": "declined",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 0,
+      "latencyMs": 2660,
+      "modelCalls": 2,
+      "inputTokens": 3852,
+      "outputTokens": 183,
+      "specCorrections": [],
+      "cart": null,
+      "agentSpec": {
+        "diet": "veg",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 5,
+        "budgetTotal": 500,
+        "maxDeliveryMinutes": 40,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": "Each of the 5 people needs at least one proper dish (excluding beverages and sides), but the available dishes in restaurants delivering within 40 minutes are mostly snacks/beverages or sides, and their combined cost plus delivery and tax exceeds the ₹500 budget."
+    },
+    {
+      "id": 44,
+      "text": "Chicken biryani for 2 in half an hour",
+      "feasible": false,
+      "authorExpectedFeasible": false,
+      "sensibleCartExists": false,
+      "oracleCheapest": null,
+      "outcome": "correct_decline",
+      "success": true,
+      "status": "declined",
+      "engine": "rules",
+      "models": [],
+      "fallbackReason": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://aistudio.google.com/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 15, model: gemini-3.5-flash-lite, description: Generate content requests per minute limit exceeded on Free Tier. See https://aistudio.google.com/docs/rate-limits.\nPlease retry in 10.540939295s.",
+      "proposals": 0,
+      "latencyMs": 7368,
+      "modelCalls": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "specCorrections": [],
+      "cart": null,
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 2,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": 30,
+        "include": [
+          "biryani"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": "No restaurant can deliver within 30 minutes"
+    },
+    {
+      "id": 45,
+      "text": "Pure veg Chinese for 4 under ₹900 within 50 mins",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Dragon Bowl",
+        "total": 623.8,
+        "eta": 45
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "rules",
+      "models": [],
+      "fallbackReason": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://aistudio.google.com/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 15, model: gemini-3.5-flash-lite, description: Generate content requests per minute limit exceeded on Free Tier. See https://aistudio.google.com/docs/rate-limits.\nPlease retry in 2.495192208s.",
+      "proposals": 1,
+      "latencyMs": 7971,
+      "modelCalls": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Dragon Bowl",
+        "total": 749.8,
+        "eta": 45,
+        "items": [
+          "4x Veg Spring Rolls"
+        ]
+      },
+      "agentSpec": {
+        "diet": "veg",
+        "cuisines": [
+          "Chinese"
+        ],
+        "spice": null,
+        "partySize": 4,
+        "budgetTotal": 900,
+        "maxDeliveryMinutes": 50,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 46,
+      "text": "A cheesecake and a waffle, delivered in 30 min",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Sweet Tooth",
+        "total": 468.4,
+        "eta": 30
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 12148,
+      "modelCalls": 2,
+      "inputTokens": 8322,
+      "outputTokens": 192,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Sweet Tooth",
+        "total": 468.4,
+        "eta": 30,
+        "items": [
+          "1x Belgian Waffle",
+          "1x Mango Cheesecake"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 1,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": 30,
+        "include": [
+          "cheesecake",
+          "waffle"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 47,
+      "text": "Feed 3 hungry people for ₹300 total",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Urban Spice Kitchen",
+        "total": 194.35,
+        "eta": 43
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 6715,
+      "modelCalls": 3,
+      "inputTokens": 11860,
+      "outputTokens": 201,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Chaat Street",
+        "total": 194.35,
+        "eta": 30,
+        "items": [
+          "3x Samosa (2 pcs)"
+        ]
+      },
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 3,
+        "budgetTotal": 300,
+        "maxDeliveryMinutes": null,
+        "include": [],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": null
+    },
+    {
+      "id": 48,
+      "text": "I'd like fries and a shake, under 200",
+      "feasible": false,
+      "authorExpectedFeasible": false,
+      "sensibleCartExists": false,
+      "oracleCheapest": null,
+      "outcome": "correct_decline",
+      "success": true,
+      "status": "declined",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 4659,
+      "modelCalls": 3,
+      "inputTokens": 15491,
+      "outputTokens": 297,
+      "specCorrections": [],
+      "cart": null,
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 1,
+        "budgetTotal": 200,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "fries",
+          "shake"
+        ],
+        "exclude": []
+      },
+      "truthFailures": [],
+      "reason": "The items requested (French Fries and Chocolate Shake) cost ₹248 subtotal, which with the ₹40 delivery fee and 5% tax totals ₹300.40, exceeding the maximum budget of ₹200."
+    },
+    {
+      "id": 49,
+      "text": "Garlic bread for 2, but no garlic please",
+      "feasible": false,
+      "authorExpectedFeasible": false,
+      "sensibleCartExists": false,
+      "oracleCheapest": null,
+      "outcome": "correct_decline",
+      "success": true,
+      "status": "declined",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 0,
+      "latencyMs": 3239,
+      "modelCalls": 2,
+      "inputTokens": 8304,
+      "outputTokens": 104,
+      "specCorrections": [],
+      "cart": null,
+      "agentSpec": {
+        "diet": "any",
+        "cuisines": [],
+        "spice": null,
+        "partySize": 2,
+        "budgetTotal": null,
+        "maxDeliveryMinutes": null,
+        "include": [
+          "garlic bread"
+        ],
+        "exclude": [
+          "garlic"
+        ]
+      },
+      "truthFailures": [],
+      "reason": "The customer requested garlic bread without garlic, but garlic bread inherently contains garlic as a primary ingredient."
+    },
+    {
+      "id": 50,
+      "text": "Dinner for 2 with a spicy dish, no paneer, veg, under ₹600, by 40 minutes",
+      "feasible": true,
+      "authorExpectedFeasible": true,
+      "sensibleCartExists": true,
+      "oracleCheapest": {
+        "restaurant": "Chaat Street",
+        "total": 153.4,
+        "eta": 30
+      },
+      "outcome": "valid_first_try",
+      "success": true,
+      "status": "proposed",
+      "engine": "gemini",
+      "models": [
+        "gemini-3.5-flash-lite"
+      ],
+      "fallbackReason": null,
+      "proposals": 1,
+      "latencyMs": 4871,
+      "modelCalls": 2,
+      "inputTokens": 7308,
+      "outputTokens": 189,
+      "specCorrections": [],
+      "cart": {
+        "restaurant": "Dosa Junction",
+        "total": 352.9,
+        "eta": 30,
+        "items": [
+          "2x Mysore Masala Dosa"
+        ]
+      },
+      "agentSpec": {
+        "diet": "veg",
+        "cuisines": [],
+        "spice": "hot",
+        "partySize": 2,
+        "budgetTotal": 600,
+        "maxDeliveryMinutes": 40,
+        "include": [],
+        "exclude": [
+          "paneer"
+        ]
+      },
+      "truthFailures": [],
+      "reason": null
+    }
+  ]
+}
