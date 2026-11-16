@@ -1,0 +1,7 @@
+node_modules
+coverage
+analytics
+src/__tests__
+# Local env files hold personal API keys; the image must not contain them.
+.env
+.env.*

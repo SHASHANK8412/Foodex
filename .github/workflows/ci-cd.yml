@@ -1,0 +1,198 @@
+name: Foodex CI/CD
+
+on:
+  pull_request:
+    branches: ["**"]
+  push:
+    branches: ["main"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            backend/package-lock.json
+
+      - name: Install backend deps
+        working-directory: backend
+        run: npm ci
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run backend tests
+        working-directory: backend
+        env:
+          NODE_ENV: test
+        run: npm test
+
+      - name: Evaluate the ordering agent (rule-based planner, 50 requests)
+        working-directory: backend
+        run: |
+          npm run agent:eval
+          cat src/agent/eval/results/rules.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Run frontend tests
+        working-directory: frontend
+        env:
+          CI: true
+        run: npm test
+
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps
+
+      - name: Run E2E tests
+        working-directory: frontend
+        run: npm run test:e2e
+
+  # Spark jobs: unit tests, then the batch job end to end on generated data.
+  data-pipeline:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/analytics
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/analytics/requirements.txt
+
+      - name: Install Spark dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run generator and Spark tests
+        env:
+          TZ: UTC
+        run: python -m pytest tests -v
+
+      - name: Generate synthetic orders
+        run: python generate_orders.py --orders 50000 --out data/synthetic
+
+      - name: Run Spark batch job
+        run: >
+          python batch_features.py
+          --input data/synthetic
+          --output output
+          --lake lake
+          --dataset-label ci-synthetic
+
+      - name: Check gold datasets
+        run: |
+          cat output/_manifest.json
+          for name in recommendations customer_segments basket_rules delivery_eta_model demand_forecast restaurant_kpis top_items hourly_heatmap; do
+            ls output/$name/part-*.json
+          done
+          test -d lake/silver/orders
+
+  # Kafka event bus against a real single-node KRaft broker.
+  kafka-integration:
+    runs-on: ubuntu-latest
+    services:
+      kafka:
+        image: apache/kafka:3.9.0
+        ports:
+          - 9092:9092
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend deps
+        working-directory: backend
+        run: npm ci
+
+      - name: Run Kafka integration test
+        working-directory: backend
+        env:
+          NODE_ENV: test
+          KAFKA_INTEGRATION_BROKERS: localhost:9092
+        run: npx jest --runInBand kafka.integration
+
+  # Builds both production images and checks the compose file.
+  docker-images:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate compose file
+        env:
+          JWT_SECRET: ci-only-secret-0123456789abcdef0123456789
+          GRAPHQL_PERSISTED_SECRET: ci-only-persisted-secret
+        run: docker compose --profile data --profile batch --profile observability config --quiet
+
+      - name: Build API image
+        run: docker build -t foodex-api:ci backend
+
+      - name: Build web image
+        run: docker build -t foodex-web:ci frontend
+
+      - name: Smoke-test the API image
+        run: |
+          docker network create foodex-ci
+          docker run -d --name mongo --network foodex-ci mongo:7.0
+          docker run -d --name api --network foodex-ci -p 5000:5000             -e MONGO_URI=mongodb://mongo:27017/foodex             -e JWT_SECRET=ci-only-secret-0123456789abcdef0123456789             -e GRAPHQL_PERSISTED_SECRET=ci-only-persisted-secret             -e SEED_DEMO_DATA=true foodex-api:ci
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://localhost:5000/api/health/ready; then exit 0; fi
+            sleep 2
+          done
+          docker logs api
+          exit 1
+
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Deploy backend to Railway
+        working-directory: backend
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          if [ -z "$RAILWAY_TOKEN" ]; then
+            echo "Skipping Railway deploy because RAILWAY_TOKEN is not set."
+            exit 0
+          fi
+
+          npm i -g @railway/cli
+          railway up --service ${{ secrets.RAILWAY_SERVICE_NAME }} --detach

@@ -1,0 +1,56 @@
+const { body } = require("express-validator");
+const { ORDER_STATUS, CHECKOUT_METHODS } = require("../constants/order");
+
+const createOrderValidator = [
+  body("restaurantId").isMongoId().withMessage("Valid restaurantId is required"),
+  body("items").isArray({ min: 1 }).withMessage("At least one item is required"),
+  body("items.*.menuItemId").isMongoId().withMessage("Valid menuItemId is required"),
+  body("items.*.quantity").isInt({ gt: 0 }).withMessage("Quantity must be greater than 0"),
+  body("deliveryAddress.line1").notEmpty().withMessage("Delivery address line1 is required"),
+  body("deliveryAddress.city").notEmpty().withMessage("Delivery city is required"),
+  body("deliveryAddress.state").notEmpty().withMessage("Delivery state is required"),
+  body("deliveryAddress.postalCode").notEmpty().withMessage("Delivery postal code is required"),
+  body("couponCode").optional({ values: "falsy" }).isString().isLength({ max: 32 }),
+  body("contactPhone")
+    .optional({ values: "falsy" })
+    .customSanitizer((value) => String(value).replace(/[\s-]/g, ""))
+    .matches(/^(?:\+?91|0)?[6-9]\d{9}$/)
+    .withMessage("Enter a 10-digit Indian mobile number"),
+];
+
+const quoteValidator = [
+  body("restaurantId").isMongoId().withMessage("Valid restaurantId is required"),
+  body("items").isArray({ min: 1, max: 50 }).withMessage("Between 1 and 50 items are required"),
+  body("items.*.menuItemId").isMongoId().withMessage("Valid menuItemId is required"),
+  body("items.*.quantity").isInt({ gt: 0, lt: 51 }).withMessage("Quantity must be between 1 and 50"),
+  body("couponCode").optional({ values: "falsy" }).isString().isLength({ max: 32 }),
+];
+
+const verifyPaymentValidator = [
+  body("orderId").isMongoId().withMessage("Valid orderId is required"),
+  body("razorpayOrderId").notEmpty().withMessage("razorpayOrderId is required"),
+  body("razorpayPaymentId").notEmpty().withMessage("razorpayPaymentId is required"),
+  body("razorpaySignature").notEmpty().withMessage("razorpaySignature is required"),
+  body("paymentMethod").optional().isIn(CHECKOUT_METHODS),
+];
+
+const updateStatusValidator = [
+  body("status")
+    .isIn(Object.values(ORDER_STATUS))
+    .withMessage(`Status must be one of: ${Object.values(ORDER_STATUS).join(", ")}`),
+  body("note").optional().isString(),
+  body("location.lat").optional().isFloat(),
+  body("location.lng").optional().isFloat(),
+];
+
+const assignDeliveryValidator = [
+  body("deliveryPartnerId").isMongoId().withMessage("Valid deliveryPartnerId is required"),
+];
+
+module.exports = {
+  quoteValidator,
+  createOrderValidator,
+  verifyPaymentValidator,
+  updateStatusValidator,
+  assignDeliveryValidator,
+};
