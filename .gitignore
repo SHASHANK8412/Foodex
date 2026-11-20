@@ -31,3 +31,6 @@ __pycache__/
 .pytest_cache/
 *.pyc
 .venv/
+
+# Downloaded ML models (semantic search embeddings)
+backend/.cache/

@@ -101,7 +101,9 @@ const menuItemSchema = new mongoose.Schema(
       type: String, 
       trim: true 
     },
-    popularityScore: { 
+    // Which model produced `embedding`; vectors from different models are never compared.
+    embeddingModel: { type: String, trim: true },
+    popularityScore: {
       type: Number, 
       default: 0 
     },

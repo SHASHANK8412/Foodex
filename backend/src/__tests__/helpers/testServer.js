@@ -13,6 +13,8 @@ process.env.GOOGLE_GEMINI_API_KEY = "";
 process.env.OPENAI_API_KEY = "";
 process.env.GROQ_API_KEY = "";
 process.env.AGENT_LLM_PROVIDER = "rules";
+// Never download the embedding model in tests; semantic search tests plug in their own embedder.
+process.env.EMBEDDINGS_PROVIDER = "off";
 process.env.ANALYTICS_OUTPUT_DIR = require("path").join(require("os").tmpdir(), "foodex-test-no-spark-output");
 process.env.MAPTILER_API_KEY = "";
 process.env.JWT_SECRET = "integration-test-secret-that-is-long-enough";

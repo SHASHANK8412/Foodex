@@ -33,12 +33,18 @@ const chatStream = asyncHandler(async (req, res) => {
 });
 
 const semanticSearch = asyncHandler(async (req, res) => {
-  const data = await aiService.semanticSearchMenuItems({
+  const results = await aiService.semanticSearchMenuItems({
     query: req.body.query,
     restaurantId: req.body.restaurantId,
-    limit: Number(req.body.limit || 12),
+    limit: Math.min(30, Math.max(1, Number(req.body.limit) || 12)),
+    withScores: true,
   });
 
+  // The vector itself is large and of no use to the client.
+  const data = results.map(({ item, score, matchedBy }) => {
+    const { embedding: _embedding, semanticText: _text, ...rest } = item.toObject();
+    return { ...rest, score, matchedBy };
+  });
   res.status(StatusCodes.OK).json({ success: true, data });
 });
 

@@ -22,6 +22,7 @@
     "@as-integrations/express5": "^1.1.2",
     "@google/generative-ai": "^0.24.1",
     "@graphql-tools/schema": "^10.0.32",
+    "@huggingface/transformers": "^4.3.2",
     "@langchain/core": "^0.3.57",
     "@langchain/openai": "^0.4.0",
     "@pinecone-database/pinecone": "^3.0.2",

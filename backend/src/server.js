@@ -79,6 +79,13 @@ const startServer = async () => {
 
     await initializeKafka();
 
+    // Embed the menu for semantic search in the background (downloads the
+    // model on first run); searches work meanwhile via keyword fallback.
+    require("./services/aiService")
+      .warmMenuEmbeddings()
+      .then((result) => console.log(`Semantic search ready: ${result.embedded} menu items (${result.model || "embeddings off"})`))
+      .catch((error) => console.warn(`Semantic search warm-up failed: ${error.message}`));
+
     const server = http.createServer(app);
     initializeSocket(server);
 

@@ -8,6 +8,7 @@ const Restaurant = require("../models/Restaurant");
 const Review = require("../models/Review");
 const ApiError = require("../utils/ApiError");
 const env = require("../config/env");
+const embeddingService = require("./embeddingService");
 
 const memoryStore = new Map();
 const sessionStateStore = new Map();
@@ -39,8 +40,10 @@ const getSessionState = (userId) => {
   return sessionStateStore.get(userId);
 };
 
+// OpenAI embeddings, used only by the Pinecone / Atlas Vector Search paths,
+// whose indexes are built for OpenAI's vectors.
 const getEmbeddingsClient = () => {
-  if (!env.openaiApiKey) {
+  if (!env.openaiApiKey || embeddingService.providerName() !== "openai") {
     return null;
   }
 
@@ -50,43 +53,98 @@ const getEmbeddingsClient = () => {
   });
 };
 
-const cosineSimilarity = (a = [], b = []) => {
-  if (!a.length || !b.length || a.length !== b.length) {
-    return 0;
-  }
-
-  let dot = 0;
-  let normA = 0;
-  let normB = 0;
-
-  for (let i = 0; i < a.length; i += 1) {
-    dot += a[i] * b[i];
-    normA += a[i] * a[i];
-    normB += b[i] * b[i];
-  }
-
-  const denom = Math.sqrt(normA) * Math.sqrt(normB);
-  return denom ? dot / denom : 0;
-};
+const { cosineSimilarity } = embeddingService;
 
 const buildSemanticText = (item) => {
   return [item.name, item.description, item.category, ...(item.tags || [])].filter(Boolean).join(" ");
 };
 
-const ensureMenuEmbedding = async (item, embeddingsClient) => {
-  if (!embeddingsClient || item.embedding?.length) {
-    return item;
-  }
+// Results below this similarity are dropped: semantic search should say
+// "nothing close" rather than pad the list with unrelated dishes.
+const MIN_SIMILARITY = 0.2;
+// ...and so are results far below the best one: "biryani" should return the
+// biryani, not the biryani followed by every dish that is vaguely Indian.
+const MAX_GAP_FROM_BEST = 0.2;
+const KEYWORD_BONUS = 0.05;
+const MAX_KEYWORD_BONUS = 0.15;
 
-  const text = item.semanticText || buildSemanticText(item);
-  const vector = await embeddingsClient.embedQuery(text);
-  item.embedding = vector;
-  item.semanticText = text;
-  await item.save();
-  return item;
+const queryTokens = (query) =>
+  String(query || "")
+    .toLowerCase()
+    .split(/\s+/)
+    .map((token) => token.replace(/[^a-z0-9]/g, ""))
+    .filter((token) => token.length >= 3);
+
+/**
+ * Makes sure every item has an embedding from the current model for its current
+ * text, embedding the missing or stale ones in one batch and saving them.
+ */
+const ensureMenuEmbeddings = async (items) => {
+  const model = embeddingService.modelId();
+  const stale = items.filter((item) => {
+    const text = buildSemanticText(item);
+    return !item.embedding?.length || item.embeddingModel !== model || item.semanticText !== text;
+  });
+  if (!stale.length) return items;
+
+  const texts = stale.map(buildSemanticText);
+  const vectors = await embeddingService.embed(texts);
+  await MenuItem.bulkWrite(
+    stale.map((item, index) => ({
+      updateOne: {
+        filter: { _id: item._id },
+        update: { $set: { embedding: vectors[index], semanticText: texts[index], embeddingModel: model } },
+      },
+    }))
+  );
+  stale.forEach((item, index) => {
+    item.embedding = vectors[index];
+    item.semanticText = texts[index];
+    item.embeddingModel = model;
+  });
+  return items;
 };
 
-const semanticSearchMenuItems = async ({ query, restaurantId, limit = 12 }) => {
+// Embeds the whole menu in the background at start-up, so the first search
+// does not wait for the model download and the catalogue's embeddings.
+const warmMenuEmbeddings = async () => {
+  if (!embeddingService.isEnabled()) return { embedded: 0 };
+  const items = await MenuItem.find({}).select("name description category tags embedding semanticText embeddingModel");
+  for (let index = 0; index < items.length; index += 64) {
+    await ensureMenuEmbeddings(items.slice(index, index + 64));
+  }
+  return { embedded: items.length, model: embeddingService.modelId() };
+};
+
+const keywordSearch = (docs, query, limit) => {
+  const normalizedQuery = String(query || "").toLowerCase().trim();
+  const tokens = queryTokens(query);
+
+  return docs
+    .map((item) => {
+      const haystack = buildSemanticText(item).toLowerCase();
+      const score = tokens.length
+        ? tokens.filter((token) => haystack.includes(token)).length
+        : haystack.includes(normalizedQuery)
+          ? 1
+          : 0;
+      return { item, score, matchedBy: "keyword" };
+    })
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+};
+
+/**
+ * Menu items that match the meaning of a query ("comfort food for a rainy day"),
+ * from open restaurants. Uses local all-MiniLM-L6-v2 embeddings by default, with
+ * a small bonus for exact keyword matches; falls back to keyword search if
+ * embeddings are disabled or the model cannot be loaded.
+ *
+ * Returns menu item documents, or { item, score, matchedBy } entries with withScores.
+ */
+const semanticSearchMenuItems = async ({ query, restaurantId, limit = 12, withScores = false }) => {
+  const finish = (entries) => (withScores ? entries : entries.map((entry) => entry.item));
   const baseQuery = {
     isAvailable: true,
   };
@@ -110,11 +168,11 @@ const semanticSearchMenuItems = async ({ query, restaurantId, limit = 12 }) => {
 
       const ids = (pineconeResult.matches || []).map((match) => match.metadata?.menuItemId).filter(Boolean);
       if (ids.length) {
-        const docs = await MenuItem.find({ _id: { $in: ids } }).populate("restaurant", "name demandLevel estimatedWaitMinutes");
-        return docs;
+        const docs = await MenuItem.find({ _id: { $in: ids } }).populate("restaurant", "name demandLevel estimatedWaitMinutes isOpen");
+        return finish(docs.map((item) => ({ item, score: null, matchedBy: "pinecone" })));
       }
     } catch (_error) {
-      // Fallback to Mongo-based semantic scoring.
+      // Fallback to the in-process search below.
     }
   }
 
@@ -140,65 +198,51 @@ const semanticSearchMenuItems = async ({ query, restaurantId, limit = 12 }) => {
       const items = await MenuItem.aggregate(pipeline);
       const ids = items.map((item) => item._id);
       if (ids.length) {
-        return MenuItem.find({ _id: { $in: ids } }).populate("restaurant", "name demandLevel estimatedWaitMinutes");
+        const docs = await MenuItem.find({ _id: { $in: ids } }).populate("restaurant", "name demandLevel estimatedWaitMinutes isOpen");
+        return finish(docs.map((item) => ({ item, score: null, matchedBy: "atlas" })));
       }
     } catch (_error) {
       // Atlas vector search index may not be configured yet.
     }
   }
 
-  const docs = await MenuItem.find(baseQuery)
-    .populate("restaurant", "name demandLevel estimatedWaitMinutes")
-    .sort({ popularityScore: -1 })
-    .limit(80);
+  const docs = (
+    await MenuItem.find(baseQuery)
+      .populate("restaurant", "name demandLevel estimatedWaitMinutes isOpen")
+      .sort({ popularityScore: -1 })
+      .limit(500)
+  ).filter((item) => item.restaurant && item.restaurant.isOpen !== false);
 
-  if (!embeddingsClient) {
-    const normalizedQuery = String(query || "").toLowerCase().trim();
-    const tokens = normalizedQuery
-      .split(/\s+/)
-      .map((token) => token.replace(/[^a-z0-9]/g, ""))
-      .filter((token) => token.length >= 3);
+  if (!embeddingService.isEnabled()) {
+    return finish(keywordSearch(docs, query, limit));
+  }
 
-    const scored = docs
-      .map((item) => {
-        const haystack = buildSemanticText(item).toLowerCase();
+  let queryVector;
+  try {
+    await ensureMenuEmbeddings(docs);
+    queryVector = await embeddingService.embedOne(query);
+  } catch (error) {
+    // The model could not be loaded (offline on first run, for example).
+    console.warn(`[semantic-search] Embeddings unavailable, using keyword search: ${error.message}`);
+    return finish(keywordSearch(docs, query, limit));
+  }
 
-        if (!tokens.length) {
-          return { item, score: haystack.includes(normalizedQuery) ? 1 : 0 };
-        }
+  const tokens = queryTokens(query);
+  const scored = docs.map((item) => {
+    const similarity = cosineSimilarity(queryVector, item.embedding || []);
+    const haystack = buildSemanticText(item).toLowerCase();
+    const bonus = Math.min(MAX_KEYWORD_BONUS, tokens.filter((token) => haystack.includes(token)).length * KEYWORD_BONUS);
+    return { item, score: Number((similarity + bonus).toFixed(4)), similarity, matchedBy: "semantic" };
+  });
+  const best = Math.max(0, ...scored.map((entry) => entry.similarity));
+  const cutoff = Math.max(MIN_SIMILARITY, best - MAX_GAP_FROM_BEST);
 
-        let score = 0;
-        tokens.forEach((token) => {
-          if (haystack.includes(token)) {
-            score += 1;
-          }
-        });
-
-        return { item, score };
-      })
-      .filter((entry) => entry.score > 0)
+  return finish(
+    scored
+      .filter((entry) => entry.similarity >= cutoff)
       .sort((a, b) => b.score - a.score)
       .slice(0, limit)
-      .map((entry) => entry.item);
-
-    return scored;
-  }
-
-  const queryVector = await embeddingsClient.embedQuery(query);
-  const scored = [];
-
-  for (const item of docs) {
-    const hydrated = await ensureMenuEmbedding(item, embeddingsClient);
-    scored.push({
-      item: hydrated,
-      score: cosineSimilarity(queryVector, hydrated.embedding || []),
-    });
-  }
-
-  return scored
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit)
-    .map((entry) => entry.item);
+  );
 };
 
 const getCollaborativeRecommendations = async ({ userId, limit = 8, restaurantId }) => {
@@ -756,6 +800,7 @@ const ensureAiAccess = () => {
 };
 
 module.exports = {
+  warmMenuEmbeddings,
   semanticSearchMenuItems,
   compareDishAcrossRestaurants,
   getCollaborativeRecommendations,
