@@ -1,6 +1,7 @@
 const { estimateOrderEta } = require("../services/analyticsService");
 const { TAX_RATE, DELIVERY_FEE } = require("../services/pricingService");
 const { matchesKeyword, isEligible, isHot, restaurantMatchesCuisine, cheapestCart } = require("./catalog");
+const { cosineSimilarity } = require("../services/embeddingService");
 
 // Explains why no cart can satisfy a spec, naming the constraint that rules
 // everything out, and suggests the closest thing that can be ordered.
@@ -10,6 +11,21 @@ const { matchesKeyword, isEligible, isHot, restaurantMatchesCuisine, cheapestCar
 const rupees = (value) => `₹${Math.round(value)}`;
 const total = (subtotal) => subtotal + Math.round(subtotal * TAX_RATE * 100) / 100 + DELIVERY_FEE;
 const listNames = (items) => [...new Set(items.map((item) => item.name))].slice(0, 3).join(", ");
+
+// Closest dishes that fit the request, by the menu embeddings that semantic
+// search stores (all-MiniLM-L6-v2). "Veg Dum Biryani" finds Bisi Bele Bath and
+// Jeera Rice even though they're filed under "Rice", not "Biryani".
+const MIN_ALTERNATIVE_SIMILARITY = 0.45;
+const similarDishes = (reference, candidates, count = 2) => {
+  if (!reference?.embedding?.length) return [];
+  return candidates
+    .filter(({ item }) => item.embeddingModel === reference.embeddingModel && item.embedding?.length === reference.embedding.length)
+    .map((entry) => ({ ...entry, similarity: cosineSimilarity(reference.embedding, entry.item.embedding) }))
+    .filter((entry) => entry.similarity >= MIN_ALTERNATIVE_SIMILARITY)
+    .sort((a, b) => b.similarity - a.similarity)
+    .slice(0, count);
+};
+const describeDishes = (entries) => entries.map(({ item, restaurant }) => `${item.name} at ${restaurant.name}`).join(" or ");
 
 // Results carry specific: false only when no single constraint could be named.
 const diagnose = (spec, catalog) => {
@@ -28,7 +44,13 @@ const diagnose = (spec, catalog) => {
     const anyOpen = everywhere.filter(({ restaurant }) => restaurant.isOpen);
 
     if (!allowedOpen.length) {
-      // Something matching is open but breaks a constraint (diet, spice, exclusions).
+      // Best: something similar that fits every constraint and is open now.
+      const fitting = all(open).filter(({ item, restaurant }) => isEligible(item, spec) && restaurantMatchesCuisine(restaurant, spec));
+      const similar = similarDishes((allowed[0] || everywhere[0]).item, fitting);
+      const fits = [spec.diet === "veg" ? "vegetarian" : null, spec.spice === "no_hot" ? "not spicy" : null].filter(Boolean).join(", ");
+      const similarText = similar.length ? `${describeDishes(similar)}: the closest ${fits ? `${fits} ` : ""}${similar.length > 1 ? "dishes" : "dish"} open now.` : null;
+
+      // Otherwise, something matching is open but breaks a constraint (diet, spice, exclusions).
       const alternative = anyOpen[0]
         ? `${anyOpen[0].item.name} at ${anyOpen[0].restaurant.name} is available now`
         : null;
@@ -37,13 +59,13 @@ const diagnose = (spec, catalog) => {
         const closed = allowed[0];
         return {
           reason: `${listNames(allowed.map(({ item }) => item))} is only on the menu at ${closed.restaurant.name}, which is closed right now.`,
-          closestOption: alternative ? `${alternative}${spec.diet === "veg" && !anyOpen[0].item.isVeg ? ", but it isn't vegetarian" : ""}.` : null,
+          closestOption: similarText || (alternative ? `${alternative}${spec.diet === "veg" && !anyOpen[0].item.isVeg ? ", but it isn't vegetarian" : ""}.` : null),
         };
       }
       if (spec.diet === "veg" && everywhere.every(({ item }) => !item.isVeg)) {
         return {
           reason: `There's no vegetarian ${word} on Foodex: ${listNames(everywhere.map(({ item }) => item))} ${everywhere.length === 1 ? "isn't" : "aren't"} vegetarian.`,
-          closestOption: alternative ? `${alternative} if non-vegetarian is fine.` : null,
+          closestOption: similarText || (alternative ? `${alternative} if non-vegetarian is fine.` : null),
         };
       }
       return {
@@ -54,7 +76,7 @@ const diagnose = (spec, catalog) => {
         ]
           .filter(Boolean)
           .join(", ")}).`,
-        closestOption: alternative ? `${alternative}.` : null,
+        closestOption: similarText || (alternative ? `${alternative}.` : null),
       };
     }
   }

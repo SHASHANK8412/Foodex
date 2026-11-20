@@ -295,6 +295,37 @@ describe("provider failover", () => {
 });
 
 describe("explaining requests that can't be done", () => {
+  test("with menu embeddings, suggests a similar dish that fits the diet instead", async () => {
+    // A stand-in for all-MiniLM-L6-v2: rice dishes are close to each other, everything else far away.
+    const embeddingService = require("../services/embeddingService");
+    const { warmMenuEmbeddings } = require("../services/aiService");
+    embeddingService.setEmbedderForTests(async (text) => {
+      const rice = (String(text).toLowerCase().match(/rice|biryani|bath|pulao/g) || []).length;
+      const norm = Math.hypot(rice, 0.3);
+      return [rice / norm, 0.3 / norm];
+    });
+
+    try {
+      await warmMenuEmbeddings();
+      const result = await planOrder({ text: "I want veg biryani", provider: null });
+
+      expect(result.status).toBe("declined");
+      expect(result.closestOption).toMatch(/: the closest vegetarian dishes open now\.$/);
+      expect(result.closestOption).not.toMatch(/Chicken/);
+      const suggested = result.closestOption.split(":")[0].split(" or ").map((part) => part.split(" at ")[0]);
+      expect(suggested).toHaveLength(2);
+      for (const name of suggested) {
+        const item = await MenuItem.findOne({ name }).populate("restaurant", "isOpen");
+        expect(item.isVeg).toBe(true);
+        expect(item.restaurant.isOpen).toBe(true);
+        expect(item.name).toMatch(/rice|bath/i);
+      }
+    } finally {
+      embeddingService.setEmbedderForTests(null);
+      await MenuItem.updateMany({}, { $unset: { embedding: 1, embeddingModel: 1, semanticText: 1 } });
+    }
+  });
+
   test("names the closed restaurant and offers what is available", async () => {
     const result = await planOrder({ text: "I want veg biryani", provider: null });
 

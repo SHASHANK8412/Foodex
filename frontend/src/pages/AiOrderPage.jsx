@@ -377,8 +377,10 @@ const AiOrderPage = () => {
 
           <p className="mt-5 border-t border-slate-100 pt-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
             Planned by {proposal.engine === "rules" ? "the rule-based planner" : `${proposal.models.join(", ") || proposal.engine}`} in{" "}
-            {(proposal.latencyMs / 1000).toFixed(1)}s · {proposal.proposals} {proposal.proposals === 1 ? "attempt" : "attempts"}
-            {proposal.usage?.modelCalls ? ` · ${proposal.usage.modelCalls} model calls` : ""}
+            {(proposal.latencyMs / 1000).toFixed(1)}s
+            {/* A decline can come before any cart is built, so "0 carts" says nothing useful. */}
+            {proposal.proposals ? ` · ${proposal.proposals} ${proposal.proposals === 1 ? "cart" : "carts"} checked` : ""}
+            {proposal.usage?.modelCalls ? ` · ${proposal.usage.modelCalls} model ${proposal.usage.modelCalls === 1 ? "call" : "calls"}` : ""}
           </p>
         </section>
       )}
