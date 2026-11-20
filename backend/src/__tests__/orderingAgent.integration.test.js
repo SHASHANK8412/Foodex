@@ -235,6 +235,122 @@ describe("LLM agent loop", () => {
   });
 });
 
+describe("provider failover", () => {
+  const { resetAuthFailures } = require("../agent/llm/providers");
+  afterEach(() => resetAuthFailures());
+
+  const expiredKey = (name) => ({
+    name,
+    createSession: () => ({
+      send: async () => {
+        throw Object.assign(new Error("401 Invalid API Key"), { status: 401 });
+      },
+    }),
+  });
+
+  const workingProvider = (name) => {
+    const provider = scriptedProvider([
+      { toolCalls: [{ name: "record_order_spec", args: { diet: "veg", spice: "hot", partySize: 3, budgetTotal: 600, maxDeliveryMinutes: 30 } }] },
+      {
+        toolCalls: [
+          {
+            name: "propose_cart",
+            args: { restaurantId: String(catalog.restaurant("Dosa Junction")._id), items: [line("Mysore Masala Dosa", 2), line("Masala Dosa", 1)], summary: "" },
+          },
+        ],
+      },
+    ]);
+    return { ...provider, name };
+  };
+
+  test("an expired key moves on to the next provider, not straight to the rule-based planner", async () => {
+    const steps = [];
+    const result = await planOrder({
+      text: headline,
+      providers: [expiredKey("groq"), workingProvider("gemini")],
+      onEvent: (event) => steps.push(event.step?.summary),
+    });
+
+    expect(result.engine).toBe("gemini");
+    expect(result.status).toBe("proposed");
+    expect(result.fallbackReason).toMatch(/groq: 401 Invalid API Key/i);
+    expect(steps).toContain("Groq is unavailable (its API key was rejected); trying Gemini");
+  });
+
+  test("a provider whose key was rejected is skipped on the next request", async () => {
+    const groq = expiredKey("groq");
+    const sends = jest.spyOn(groq, "createSession");
+    await planOrder({ text: headline, providers: [groq, workingProvider("gemini")] });
+    await planOrder({ text: headline, providers: [groq, workingProvider("gemini")] });
+
+    expect(sends).toHaveBeenCalledTimes(1);
+  });
+
+  test("uses the rule-based planner only when every provider fails", async () => {
+    const result = await planOrder({ text: headline, providers: [expiredKey("groq"), expiredKey("gemini")] });
+
+    expect(result.engine).toBe("rules");
+    expect(result.status).toBe("proposed");
+  });
+});
+
+describe("explaining requests that can't be done", () => {
+  test("names the closed restaurant and offers what is available", async () => {
+    const result = await planOrder({ text: "I want veg biryani", provider: null });
+
+    expect(result.status).toBe("declined");
+    expect(result.reason).toBe("Veg Dum Biryani is only on the menu at Midnight Biryani, which is closed right now.");
+    expect(result.closestOption).toBe("Chicken Biryani at Urban Spice Kitchen is available now, but it isn't vegetarian.");
+  });
+
+  test("says when a dish doesn't exist at all", async () => {
+    const result = await planOrder({ text: "sushi for two", provider: null });
+    expect(result.status).toBe("proposed"); // "sushi" is not a known dish word, so the parser ignores it
+
+    const { diagnose } = require("../agent/diagnose");
+    const { loadCatalog } = require("../agent/catalog");
+    expect(diagnose(normalizeSpec({ include: ["sushi"] }), await loadCatalog()).reason).toBe('Nothing on Foodex matches "sushi".');
+  });
+
+  test("gives the fastest possible time when the deadline is too tight", async () => {
+    const result = await planOrder({ text: "veg food for 3 delivered in 20 minutes", provider: null });
+
+    expect(result.reason).toMatch(/^Nothing can arrive within 20 minutes; the fastest is about \d+ minutes\.$/);
+    expect(result.closestOption).toMatch(/can deliver in about \d+ min for ₹\d+/);
+  });
+
+  test("gives the cheapest possible total when the budget is too low", async () => {
+    const result = await planOrder({ text: "dinner for 4 under ₹100", provider: null });
+
+    expect(result.reason).toMatch(/^The cheapest cart that fits is ₹\d+ \(tax and delivery included\), above your ₹100 budget\.$/);
+  });
+});
+
+describe("explanations when the LLM declines", () => {
+  test("the customer sees the catalogue's facts, not the model's guess", async () => {
+    const provider = scriptedProvider([
+      { toolCalls: [{ name: "record_order_spec", args: { diet: "veg", partySize: 1, include: ["biryani"] } }] },
+      { toolCalls: [{ name: "report_infeasible", args: { reason: "No restaurant offers veg biryani.", closestOption: "Try curd rice." } }] },
+    ]);
+
+    const result = await planOrder({ text: "I want veg biryani", provider });
+
+    expect(result.reason).toBe("Veg Dum Biryani is only on the menu at Midnight Biryani, which is closed right now.");
+    expect(result.closestOption).toBe("Chicken Biryani at Urban Spice Kitchen is available now, but it isn't vegetarian.");
+  });
+
+  test("keeps the model's wording when no single constraint explains it", async () => {
+    const provider = scriptedProvider([
+      { toolCalls: [{ name: "record_order_spec", args: { partySize: 1 } }] },
+      { toolCalls: [{ name: "report_infeasible", args: { reason: "The model's own reason." } }] },
+    ]);
+
+    const result = await planOrder({ text: "something", provider });
+
+    expect(result.reason).toBe("The model's own reason.");
+  });
+});
+
 describe("rule-based agent", () => {
   test.each([
     ["Something spicy and veg for 3 people, under ₹600, delivered in 30 minutes", "proposed"],

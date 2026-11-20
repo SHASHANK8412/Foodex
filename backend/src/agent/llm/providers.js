@@ -273,4 +273,47 @@ const resolveProvider = (override = {}) => {
   return groq() || gemini() || openai() || null;
 };
 
-module.exports = { resolveProvider, createGeminiProvider, createOpenAiCompatibleProvider, ProviderError, withNullableOptionals };
+/**
+ * Every configured provider, in preference order, for failover: if one fails
+ * (expired key, quota, outage) the next is tried before the rule-based planner.
+ * An explicit AGENT_LLM_PROVIDER pins a single provider.
+ */
+const resolveProviders = () => {
+  const choice = (process.env.AGENT_LLM_PROVIDER || "auto").toLowerCase();
+  if (choice !== "auto") {
+    const pinned = resolveProvider({ provider: choice });
+    return pinned ? [pinned] : [];
+  }
+  return ["groq", "gemini", "openai"].map((name) => resolveProvider({ provider: name })).filter(Boolean);
+};
+
+// A rejected key will not start working on its own, so a provider that fails
+// authentication is skipped for a while instead of costing every request a
+// failed call.
+const AUTH_FAILURE_COOLDOWN_MS = 30 * 60 * 1000;
+const authFailures = new Map();
+
+const isAuthError = (error) =>
+  [401, 403].includes(error?.status) || /invalid api key|api key (not valid|expired)|expired_api_key|permission denied/i.test(error?.message || "");
+
+const markAuthFailure = (name) => authFailures.set(name, Date.now());
+
+const isCoolingDown = (name) => {
+  const at = authFailures.get(name);
+  if (!at) return false;
+  if (Date.now() - at > AUTH_FAILURE_COOLDOWN_MS) {
+    authFailures.delete(name);
+    return false;
+  }
+  return true;
+};
+
+const resetAuthFailures = () => authFailures.clear();
+
+module.exports = {
+  resolveProviders,
+  isAuthError,
+  markAuthFailure,
+  isCoolingDown,
+  resetAuthFailures,
+  resolveProvider, createGeminiProvider, createOpenAiCompatibleProvider, ProviderError, withNullableOptionals };

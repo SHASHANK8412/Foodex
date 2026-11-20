@@ -363,9 +363,15 @@ const AiOrderPage = () => {
                 {proposal.status === "declined" ? "That can't be done right now" : "The assistant couldn't find a cart that fits"}
               </h2>
               {proposal.reason && <p className="text-sm text-slate-700 dark:text-slate-300">{proposal.reason}</p>}
-              {proposal.closestOption && <p className={muted}>Closest option: {proposal.closestOption}</p>}
+              {proposal.closestOption && (
+                <p className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-900 dark:bg-emerald-500/10 dark:text-emerald-200">
+                  <span className="font-semibold">Instead:</span> {proposal.closestOption}
+                </p>
+              )}
               {proposal.checks?.length > 0 && <Checklist checks={proposal.checks} />}
-              <p className={muted}>Try a higher budget, a longer delivery time or fewer restrictions.</p>
+              {!proposal.closestOption && (
+                <p className={muted}>Try rephrasing, or loosen one part of the request.</p>
+              )}
             </div>
           )}
 

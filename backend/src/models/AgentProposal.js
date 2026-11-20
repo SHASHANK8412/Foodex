@@ -29,6 +29,8 @@ const agentProposalSchema = new mongoose.Schema(
     checks: { type: [mongoose.Schema.Types.Mixed], default: [] },
     summary: String,
     reason: String,
+    // Why the LLM providers were not used (e.g. an expired API key), for operators.
+    fallbackReason: String,
     closestOption: String,
     proposals: Number,
     trace: { type: [mongoose.Schema.Types.Mixed], default: [] },

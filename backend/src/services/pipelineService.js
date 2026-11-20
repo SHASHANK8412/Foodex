@@ -156,7 +156,8 @@ const pick = (list) => list[Math.floor(Math.random() * list.length)];
 const simulateTraffic = async ({ orders = 25 } = {}) => {
   const orderCount = Math.min(MAX_SIMULATED_ORDERS, Math.max(1, Math.floor(Number(orders) || 25)));
 
-  const restaurants = await Restaurant.find({}).select("name address.city").lean();
+  // Closed restaurants take no orders, simulated or not.
+  const restaurants = await Restaurant.find({ isOpen: true }).select("name address.city").lean();
   const menuItems = await MenuItem.find({ restaurant: { $in: restaurants.map((item) => item._id) } })
     .select("name price restaurant")
     .lean();

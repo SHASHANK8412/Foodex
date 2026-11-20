@@ -3,7 +3,8 @@ const { estimateOrderEta } = require("../services/analyticsService");
 const { parseRequest, reconcileSpec, CUISINES } = require("./orderSpec");
 const { searchMenus, loadCatalog, cheapestCart, restaurantMatchesCuisine } = require("./catalog");
 const { validateCart } = require("./validator");
-const { resolveProvider } = require("./llm/providers");
+const { diagnose } = require("./diagnose");
+const { resolveProviders, isAuthError, markAuthFailure, isCoolingDown } = require("./llm/providers");
 
 // The AI ordering agent.
 //
@@ -239,8 +240,14 @@ const runLlmAgent = async ({ text, provider, onEvent }) => {
     },
     report_infeasible: async (args) => {
       ensureSpec();
-      record({ kind: "infeasible", summary: `Can't be done: ${args.reason}` });
-      outcome = { status: "declined", reason: args.reason, closestOption: args.closestOption || null };
+      // The explanation shown to the customer comes from the catalogue, not the
+      // model: it only sees open restaurants, so it can say "nobody serves veg
+      // biryani" when one closed restaurant does. Its wording is the fallback.
+      const facts = diagnose(spec, await loadCatalog());
+      const reason = facts.specific === false ? args.reason || facts.reason : facts.reason;
+      const closestOption = facts.closestOption || args.closestOption || null;
+      record({ kind: "infeasible", summary: `Can't be done: ${reason}` });
+      outcome = { status: "declined", reason, closestOption };
       return { acknowledged: true };
     },
   };
@@ -343,43 +350,74 @@ const runRuleAgent = async ({ text, onEvent }) => {
     }
   }
 
-  const reason = !candidates.length
-    ? "No open restaurant has dishes that match the request"
-    : !ranked.length
-      ? `No restaurant can deliver within ${spec.maxDeliveryMinutes} minutes`
-      : "Every option is over the budget";
+  // Name the constraint that rules everything out, and the closest alternative.
+  const { reason, closestOption } = diagnose(spec, catalog);
   record({ kind: "infeasible", summary: `Can't be done: ${reason}` });
-  return { status: "declined", reason, spec, corrections: [], proposals, trace, usage: { inputTokens: 0, outputTokens: 0, modelCalls: 0 }, models: [] };
+  return {
+    status: "declined",
+    reason,
+    closestOption,
+    spec,
+    corrections: [],
+    proposals,
+    trace,
+    usage: { inputTokens: 0, outputTokens: 0, modelCalls: 0 },
+    models: [],
+  };
 };
 
 /**
  * Plans an order from a natural-language request.
  * @returns {Promise<{ status: "proposed"|"declined"|"failed", validation?, reason?, spec, trace, usage, engine, latencyMs }>}
  */
-const planOrder = async ({ text, provider: providerOverride, onEvent } = {}) => {
+const PROVIDER_LABELS = { groq: "Groq", gemini: "Gemini", openai: "OpenAI" };
+const label = (provider) => PROVIDER_LABELS[provider.name] || provider.name;
+
+const planOrder = async ({ text, provider: providerOverride, providers: providerList, onEvent } = {}) => {
   const started = Date.now();
   const request = String(text || "").trim().slice(0, 500);
-  const provider = providerOverride === undefined ? resolveProvider() : providerOverride;
 
-  let result;
-  let engine = provider ? provider.name : "rules";
-  let fallbackReason = null;
+  // An explicit provider (tests, evaluation) is used alone; otherwise every
+  // configured provider is tried in order, skipping ones whose key was rejected.
+  const candidates = providerList || (providerOverride === undefined ? resolveProviders() : [providerOverride]);
+  const providers = candidates.filter((provider) => provider && !isCoolingDown(provider.name));
 
-  if (provider) {
+  const failures = [];
+  for (const [index, provider] of providers.entries()) {
     try {
-      result = await runLlmAgent({ text: request, provider, onEvent });
+      const result = await runLlmAgent({ text: request, provider, onEvent });
+      return {
+        ...result,
+        request,
+        engine: provider.name,
+        fallbackReason: failures.length ? failures.join("; ") : null,
+        latencyMs: Date.now() - started,
+      };
     } catch (error) {
-      // The LLM is unavailable (quota, outage): degrade to the rule-based agent.
-      fallbackReason = error.message;
-      onEvent?.({ type: "step", step: { kind: "fallback", summary: "AI model unavailable; using the rule-based planner" } });
-      result = await runRuleAgent({ text: request, onEvent });
-      engine = "rules";
+      if (isAuthError(error)) markAuthFailure(provider.name);
+      failures.push(`${label(provider)}: ${error.message}`);
+      const next = providers[index + 1];
+      onEvent?.({
+        type: "step",
+        step: {
+          kind: "fallback",
+          summary: `${label(provider)} is unavailable${isAuthError(error) ? " (its API key was rejected)" : ""}; ${
+            next ? `trying ${label(next)}` : "using the rule-based planner"
+          }`,
+        },
+      });
     }
-  } else {
-    result = await runRuleAgent({ text: request, onEvent });
   }
 
-  return { ...result, request, engine, fallbackReason, latencyMs: Date.now() - started };
+  // No provider configured, or all of them failed: the deterministic planner.
+  const result = await runRuleAgent({ text: request, onEvent });
+  return {
+    ...result,
+    request,
+    engine: "rules",
+    fallbackReason: failures.length ? failures.join("; ") : null,
+    latencyMs: Date.now() - started,
+  };
 };
 
 module.exports = {
